@@ -1,0 +1,113 @@
+## AI-Powered Interview Coach – Development Roadmap
+
+### ✅ Phase 1: MVP (Go Live Fast)
+
+**🎯 Goal:** Working AI interview chatbot with minimal design, live on the internet.
+
+### 🔧 Tech Stack (Free-Friendly)
+
+| Layer    | Tech                                       | Free Tier          |
+| -------- | ------------------------------------------ | ------------------ |
+| Frontend | React + Tailwind                           | Vercel or Netlify  |
+| Backend  | Nest JS                                    | Render or Railway  |
+| Database | PostgreSQL                                 | Supabase/Neon/ElephantSQL |
+| AI Model | Gemini API                                 | Google free tier   |
+| Auth     | None for MVP                               | –                  |
+| Storage  | In-memory or Firebase Firestore (optional) | Firebase free plan |
+
+### 📌 Step-by-Step Plan
+
+#### Step 1: Project Setup
+
+* Create two folders: `client/` (React) and `server/` (Node.js).
+* Initialize both with Git and basic `package.json`.
+* Push to GitHub.
+
+#### Step 2: Basic Backend (server/)
+
+* Set up Express server with endpoints:
+
+  * `/generate-question`
+  * `/evaluate-answer`
+* Use `@google/generative-ai` to integrate Gemini Pro.
+* Add CORS, dotenv, and body parsing.
+* Test with Postman.
+
+#### Step 3: Frontend (client/)
+
+* Create React app with Vite or CRA.
+* Build UI:
+
+  * Role selector
+  * Start interview button
+  * Chat interface
+* Use `axios` or `fetch` for backend API calls.
+
+#### Step 4: Connect Frontend & Backend
+
+* Connect to backend endpoints.
+* Display:
+
+  * Gemini-generated question
+  * User's response input
+  * Gemini-generated feedback
+
+#### Step 5: Deploy MVP
+
+* Frontend → Vercel (connect GitHub repo)
+* Backend → Render or Railway (free backend hosting)
+* Use `.env` securely, never expose Gemini key on frontend.
+
+---
+
+### 🚀 Phase 2: First Improvements (User-Ready Version)
+
+**🆕 Additions:**
+
+1. Improved UI/UX (Tailwind/Material UI)
+2. Save sessions (localStorage or Firebase)
+3. Coach personas (Friendly, Tough, etc.)
+4. Role-based interviews (Frontend, Backend, PM, etc.)
+
+---
+
+### 🔥 Phase 3: Full Product Features
+
+**📦 Features:**
+
+* Firebase Auth
+* Firestore for user session history
+* Feedback analytics
+* Voice input/output
+* Admin dashboard
+* SEO-ready landing page
+
+---
+
+### 🌍 Deployment Plan (Free)
+
+| Component | Platform       | Notes                       |
+| --------- | -------------- | --------------------------- |
+| Frontend  | Vercel         | Git integration, easy CI/CD |
+| Backend   | Render/Railway | Free plans with limits      |
+| Database  | Firebase       | Generous free tier          |
+
+---
+
+### 🧠 Final Touches
+
+* Write a solid README
+* Record a demo video
+* Share on LinkedIn or personal portfolio
+
+---
+
+### 🧭 Summary Timeline (Example)
+
+| Week | Goals                          |
+| ---- | ------------------------------ |
+| 1    | MVP setup (frontend + backend) |
+| 2    | Gemini API, live deployment    |
+| 3    | UX polish, roles, coach types  |
+| 4    | Session storage, history       |
+| 5+   | Auth, analytics, voice support |
