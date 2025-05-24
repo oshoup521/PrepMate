@@ -5,12 +5,17 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  
-  // Get CORS origin from environment or use multiple origins
+    // Get CORS origin from environment or use multiple origins
   const corsOrigin = configService.get('CORS_ORIGIN');
   const origins = corsOrigin ? 
     [corsOrigin, 'http://localhost:5173'] : 
-    ['https://prepmate-ucro.onrender.com', 'http://localhost:5173'];
+    [
+      'https://prepmate-ucro.onrender.com', 
+      'http://localhost:5173',
+      'https://prepmate.oshoupadhyay.in',
+      'https://prep-mate-chi.vercel.app',
+      'http://localhost:3000',
+    ];
   
   // Enable CORS for the frontend
   app.enableCors({
