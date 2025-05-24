@@ -168,6 +168,42 @@ Optimized for both desktop and mobile devices with adaptive layout and intuitive
 - Keyboard shortcuts
 - Screen reader friendly components
 
+## Deployment
+
+### Frontend Deployment
+
+1. Create a new Web Service on your preferred platform (Render, Vercel, Netlify, etc.)
+2. Connect your GitHub repository
+3. Configure the build settings:
+   - Build Command: `cd client && npm install && npm run build`
+   - Start Command: `cd client && npm run preview`
+4. Set environment variables:
+   - `VITE_API_URL`: Your backend API URL
+
+### Backend Deployment
+
+1. Create a new Web Service on your preferred platform
+2. Connect your GitHub repository
+3. Configure the build settings:
+   - Build Command: `cd server && npm install && npm run build`
+   - Start Command: `cd server && npm run start:prod`
+4. Set environment variables:
+   - `PORT`: 10000 (or your preferred port)
+   - `GEMINI_API_KEY`: Your Google Gemini API key
+   - `GEMINI_MODEL`: gemini-2.0-flash
+   - `CORS_ORIGIN`: Your frontend URL
+   - `NODE_ENV`: production
+
+### CORS Configuration
+
+For proper cross-origin requests between your frontend and backend:
+
+1. Make sure the `CORS_ORIGIN` environment variable on your backend matches exactly with the URL of your frontend deployment
+2. If you're experiencing CORS issues:
+   - Check network requests in browser developer tools
+   - Verify that your backend is correctly configured to accept requests from your frontend origin
+   - Make sure your frontend's API URL is properly configured in the client's environment variables
+
 ## Future Enhancements
 
 - User authentication and profile management
