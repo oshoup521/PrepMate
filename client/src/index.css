@@ -24,7 +24,41 @@
   color-scheme: light;
 }
 
+@layer base {
+  body {
+    @apply bg-light-bg text-light-text dark:bg-dark-bg dark:text-dark-text;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-forest dark:text-sage font-semibold;
+  }
+  
+  a {
+    @apply text-forest dark:text-sage hover:text-olive dark:hover:text-sand transition-colors;
+  }
+  
+  button {
+    @apply focus:outline-none focus:ring-2 focus:ring-forest dark:focus:ring-sage;
+  }
+}
+
 @layer components {
+  .btn {
+    @apply rounded-md px-4 py-2 font-medium transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-forest hover:bg-forest/90 text-white dark:bg-sage dark:hover:bg-sage/90 dark:text-dark-bg shadow-sm hover:shadow;
+  }
+  
+  .btn-secondary {
+    @apply bg-olive/20 hover:bg-olive/30 text-forest dark:bg-sage/20 dark:hover:bg-sage/30 dark:text-sage;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-dark-muted rounded-xl border border-light-border dark:border-dark-border shadow-sm;
+  }
+  
   .animate-fadeIn {
     animation: fadeIn 0.5s ease-out forwards;
     opacity: 1;
@@ -37,10 +71,10 @@
 
   .typing-indicator span {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-right: 4px;
-    background-color: #3b82f6;
+    width: 6px;
+    height: 6px;
+    margin-right: 3px;
+    @apply bg-forest dark:bg-sage;
     border-radius: 50%;
     animation: typingBounce 1.2s infinite ease-in-out;
   }
@@ -56,6 +90,37 @@
   .typing-indicator span:nth-child(3) {
     animation-delay: 0.4s;
     margin-right: 0;
+  }
+  
+  /* Chat message styles */
+  .chat-container {
+    @apply flex flex-col gap-4 p-4;
+  }
+  
+  .chat-message {
+    @apply max-w-[85%] p-4 rounded-lg transition-all duration-200;
+  }
+  
+  .chat-message-ai {
+    @apply bg-sage/15 dark:bg-sage/5 text-light-text dark:text-dark-text self-start rounded-tl-none border border-sage/20 dark:border-sage/10;
+  }
+  
+  .chat-message-user {
+    @apply bg-forest dark:bg-forest/80 text-white self-end rounded-tr-none shadow-sm;
+  }
+  
+  /* Interview summary styles */
+  .summary-card {
+    @apply p-6 rounded-xl bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border shadow-md;
+  }
+  
+  .summary-score {
+    @apply text-2xl font-bold text-forest dark:text-sage;
+  }
+  
+  /* Feedback section specific styles */
+  .feedback-section {
+    @apply bg-gradient-to-r from-olive/10 to-sage/10 dark:from-olive/5 dark:to-sage/5 border-l-4 border-olive dark:border-sage;
   }
 }
 
@@ -76,53 +141,5 @@
   }
   30% {
     transform: translateY(-4px);
-  }
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
   }
 }

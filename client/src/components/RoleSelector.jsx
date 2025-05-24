@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // Role definitions with icons and descriptions
 const roles = [
@@ -77,33 +77,100 @@ const roles = [
   }
 ];
 
-const RoleSelector = ({ onRoleSelect, selectedRole }) => {  return (
+// Difficulty levels
+const difficultyLevels = [
+  { id: "beginner", name: "Beginner", description: "Basic interview questions" },
+  { id: "intermediate", name: "Intermediate", description: "Standard interview depth" },
+  { id: "advanced", name: "Advanced", description: "Challenging technical questions" }
+];
+
+const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selectedDifficulty }) => {
+  const [difficulty, setDifficulty] = useState(selectedDifficulty || "intermediate");
+  
+  const handleRoleClick = (roleTitle) => {
+    onRoleSelect(roleTitle);
+  };
+  
+  const handleDifficultyChange = (e) => {
+    const difficultyId = e.target.value;
+    setDifficulty(difficultyId);
+    if (onDifficultySelect) {
+      onDifficultySelect(difficultyId);
+    }
+  };
+  
+  return (
     <div className="mb-6">
-      <h2 className="text-lg font-bold mb-2 text-gray-800 dark:text-white">Select Your Interview Role</h2>
-      <p className="text-gray-600 dark:text-gray-300 mb-4 text-xs">Choose the position you're preparing for below</p>
+      <h2 className="text-xl font-bold mb-4 text-forest dark:text-sage">Choose Your Interview</h2>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {roles.map((role) => (
-          <button
-            key={role.id}
-            onClick={() => onRoleSelect(role.title)}
-            className={`
-              p-2 rounded-lg transition-all duration-200 flex items-center text-left
-              hover:transform hover:-translate-y-1
-              ${selectedRole === role.title 
-                ? 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border border-blue-500 text-blue-700 dark:text-blue-300 shadow-sm' 
-                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'}
-            `}
-          >
-            <div className={`p-2 rounded-full mr-2 ${selectedRole === role.title ? 'bg-blue-100 dark:bg-blue-800 text-blue-500 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
-              {role.icon}
-            </div>
-            <div>
-              <div className="font-medium text-xs">{role.title}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{role.description}</div>
-            </div>
-          </button>
-        ))}
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-md font-semibold mb-3 text-forest/90 dark:text-sage/90">Select Role</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {roles.map((role) => (
+              <button
+                key={role.id}
+                onClick={() => handleRoleClick(role.title)}
+                className={`
+                  card p-3 transition-all duration-200 flex items-center text-left
+                  hover:shadow hover:-translate-y-1 border
+                  ${selectedRole === role.title 
+                    ? 'bg-sage/20 dark:bg-sage/10 border-forest dark:border-sage text-forest dark:text-sage' 
+                    : 'bg-white dark:bg-dark-muted border-light-border dark:border-dark-border text-light-text dark:text-dark-text hover:border-olive dark:hover:border-sage/50'}
+                `}
+              >
+                <div className={`p-2 rounded-full mr-2 ${selectedRole === role.title ? 'bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage' : 'bg-light-border dark:bg-dark-border text-light-text/60 dark:text-dark-text/60'}`}>
+                  {role.icon}
+                </div>
+                <div>
+                  <div className="font-medium text-xs">{role.title}</div>
+                  <div className="text-xs text-light-text/60 dark:text-dark-text/60">{role.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-md font-semibold mb-3 text-forest/90 dark:text-sage/90">Select Difficulty</h3>
+          <div className="flex flex-wrap gap-3">
+            {difficultyLevels.map((level) => (
+              <label 
+                key={level.id}
+                className={`
+                  flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all border
+                  ${difficulty === level.id 
+                    ? 'bg-sage/20 dark:bg-sage/10 border-forest dark:border-sage text-forest dark:text-sage' 
+                    : 'bg-white dark:bg-dark-muted border-light-border dark:border-dark-border hover:border-olive dark:hover:border-sage/50'}
+                `}
+              >
+                <input
+                  type="radio"
+                  name="difficulty"
+                  value={level.id}
+                  checked={difficulty === level.id}
+                  onChange={handleDifficultyChange}
+                  className="sr-only"
+                />
+                <div 
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center
+                    ${difficulty === level.id 
+                      ? 'border-forest dark:border-sage' 
+                      : 'border-light-text/30 dark:border-dark-text/30'}
+                  `}
+                >
+                  {difficulty === level.id && (
+                    <div className="w-2 h-2 rounded-full bg-forest dark:bg-sage"></div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{level.name}</p>
+                  <p className="text-xs text-light-text/60 dark:text-dark-text/60">{level.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
