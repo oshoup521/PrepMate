@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LoadingButton } from './LoadingSpinner';
 
 const ChatInterface = ({ onSendMessage, isLoading }) => {
   const [userInput, setUserInput] = useState('');
@@ -33,11 +34,11 @@ const ChatInterface = ({ onSendMessage, isLoading }) => {
           disabled={isLoading}
           className="flex-1 p-3 rounded-md border border-light-border dark:border-dark-border focus:outline-none focus:ring-2 focus:ring-forest dark:focus:ring-sage transition-all duration-200 bg-white dark:bg-dark-bg text-light-text dark:text-dark-text"
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit(e)}
-        />
-        <button
+        />        <LoadingButton
           type="submit"
           disabled={isLoading || !userInput.trim()}
-          className={`btn px-5 py-3 rounded-md font-medium transition-all duration-300 flex items-center ${
+          isLoading={isLoading}
+          className={`px-5 py-3 rounded-md font-medium transition-all duration-300 flex items-center ${
             isLoading || !userInput.trim() 
               ? 'bg-light-border dark:bg-dark-border text-light-text/50 dark:text-dark-text/50 cursor-not-allowed' 
               : 'btn-primary'
@@ -53,7 +54,7 @@ const ChatInterface = ({ onSendMessage, isLoading }) => {
               </svg>
             </>
           )}
-        </button>
+        </LoadingButton>
       </div>
       <div className="mt-2 text-xs text-light-text/60 dark:text-dark-text/60 flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">

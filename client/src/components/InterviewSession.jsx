@@ -1,10 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import RoleSelector from './RoleSelector';
 import ChatInterface from './ChatInterface';
 import InterviewSummary from './InterviewSummary';
 import ConfettiEffect from './ConfettiEffect';
+import { LoadingCard, LoadingButton } from './LoadingSpinner';
 import interviewService from '../services/interviewService';
+import AuthContext from '../contexts/AuthContext';
+import { showSuccessToast, showLoadingToast, dismissToast } from '../utils/errorHandler';
+import toast from 'react-hot-toast';
 import Logo from './Logo';
+
+// Mapping from UI difficulty to API difficulty
+const mapDifficulty = (uiDifficulty) => {
+  const difficultyMap = {
+    'beginner': 'easy',
+    'intermediate': 'medium',
+    'advanced': 'hard'
+  };
+  return difficultyMap[uiDifficulty] || 'medium'; // Default to medium if mapping not found
+};
 
 const InterviewSession = () => {
   const [selectedRole, setSelectedRole] = useState('');
@@ -13,9 +27,12 @@ const InterviewSession = () => {
   const [messages, setMessages] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
+  const [isEvaluatingAnswer, setIsEvaluatingAnswer] = useState(false);
   const [interviewSummary, setInterviewSummary] = useState(null);
   const [questionAnswers, setQuestionAnswers] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [currentSession, setCurrentSession] = useState(null);
   const chatContainerRef = useRef(null);
   
   // Scroll to bottom of chat when messages update
@@ -34,13 +51,27 @@ const InterviewSession = () => {
   };
   
   const startInterview = async () => {
-    if (!selectedRole) return;
+    if (!selectedRole) {
+      toast.error('Please select a job role first');
+      return;
+    }
     
     setIsLoading(true);
     setSessionStarted(true);
+    
+    const loadingToast = showLoadingToast('Starting your interview session...');
+    
     try {
+      // Map UI difficulty to API difficulty
+      const apiDifficulty = mapDifficulty(difficulty);
+      
+      // Create a new session
+      const session = await interviewService.createSession(selectedRole, apiDifficulty);
+      setCurrentSession(session);
+      
       // Get the first question from the AI
-      const questionData = await interviewService.generateQuestion(selectedRole, difficulty);
+      setIsGeneratingQuestion(true);
+      const questionData = await interviewService.generateQuestion(selectedRole, apiDifficulty);
       
       // Handle case where question might be a JSON string
       let question = "";
@@ -66,37 +97,55 @@ const InterviewSession = () => {
           sender: 'ai', 
           text: question 
         }
-      ]);
-    } catch (error) {
+      ]);    } catch (error) {
+      dismissToast(loadingToast);
       console.error("Failed to start interview:", error);
+      
+      // Fallback with a generic question
+      const fallbackQuestion = "Let's begin the interview. Tell me about your background and experience in this field.";
+      setCurrentQuestion(fallbackQuestion);
       setMessages([
         { 
           sender: 'ai', 
-          text: "Sorry, I couldn't generate a question right now. Let's start with something simple: Tell me about your background in this field." 
+          text: fallbackQuestion
         }
       ]);
+      
+      toast.error('Failed to connect to AI service. Starting with basic questions.');
     } finally {
       setIsLoading(false);
+      setIsGeneratingQuestion(false);
     }
   };
-  
   const handleSendMessage = async (userMessage) => {
     if (!userMessage.trim() || !currentQuestion) return;
     
     // Add the user message to the chat
     setMessages((prev) => [...prev, { sender: 'user', text: userMessage }]);
     setIsLoading(true);
+    setIsEvaluatingAnswer(true);
+    
+    const evaluationToast = showLoadingToast('AI is evaluating your answer...');
     
     try {
+      // Map UI difficulty to API difficulty
+      const apiDifficulty = mapDifficulty(difficulty);
+      
       // Get AI feedback on the answer
       const evaluation = await interviewService.evaluateAnswer(
         currentQuestion,
         userMessage,
         selectedRole,
-        difficulty
+        apiDifficulty
       );
+      
+      dismissToast(evaluationToast);
+      const questionToast = showLoadingToast('Generating next question...');
+      
       // Generate the next question
-      const nextQuestionData = await interviewService.generateQuestion(selectedRole, difficulty);
+      const nextQuestionData = await interviewService.generateQuestion(selectedRole, apiDifficulty);
+      
+      dismissToast(questionToast);
       
       // Handle case where question might be a JSON string
       let nextQuestion = "";
@@ -126,10 +175,9 @@ const InterviewSession = () => {
           score: evaluation.score
         }
       ]);
-      
-      // Track this Q&A pair with feedback for summary
-      setQuestionAnswers((prev) => [
-        ...prev, 
+        // Track this Q&A pair with feedback for summary
+      const newQuestionAnswers = [
+        ...questionAnswers, 
         { 
           question: currentQuestion, 
           answer: userMessage, 
@@ -137,8 +185,24 @@ const InterviewSession = () => {
           score: evaluation.score,
           improvementAreas: evaluation.improvement_areas || "No specific improvement areas identified."
         }
-      ]);
-      
+      ];
+      setQuestionAnswers(newQuestionAnswers);
+
+      // Save Q&A data to database
+      if (currentSession) {
+        try {
+          const questions = newQuestionAnswers.map(qa => qa.question);
+          const answers = newQuestionAnswers.map(qa => qa.answer);
+          await interviewService.updateSession(currentSession.id, {
+            questions,
+            answers
+          });
+        } catch (error) {
+          console.error("Failed to save session data:", error);
+          // Don't interrupt the flow, just log the error
+        }
+      }
+
       // Add the next question after a short delay
       setTimeout(() => {
         setCurrentQuestion(nextQuestion);
@@ -147,41 +211,97 @@ const InterviewSession = () => {
           { sender: 'ai', text: nextQuestion }
         ]);
         setIsLoading(false);
+        setIsEvaluatingAnswer(false);
       }, 1000);
       
     } catch (error) {
+      dismissToast(evaluationToast);
       console.error("Failed to process answer:", error);
+      
+      // Provide fallback feedback and next question
       setMessages((prev) => [
         ...prev, 
         { 
           sender: 'ai', 
-          text: "Thanks for your answer. Let's move to the next question.",
+          text: "Thank you for your answer. Here's some feedback:",
+          feedback: "Your answer shows good understanding. Let's continue with the next question.",
+          score: 7
         },
         {
           sender: 'ai',
           text: "Can you tell me about a time you faced a technical challenge and how you overcame it?"
         }
       ]);
+        // Track Q&A with fallback feedback
+      const newQuestionAnswers = [
+        ...questionAnswers, 
+        { 
+          question: currentQuestion, 
+          answer: userMessage, 
+          feedback: "System evaluation unavailable - answer recorded.",
+          score: 7,
+          improvementAreas: "Unable to provide specific feedback at this time."
+        }
+      ];
+      setQuestionAnswers(newQuestionAnswers);
+
+      // Save Q&A data to database even with fallback
+      if (currentSession) {
+        try {
+          const questions = newQuestionAnswers.map(qa => qa.question);
+          const answers = newQuestionAnswers.map(qa => qa.answer);
+          await interviewService.updateSession(currentSession.id, {
+            questions,
+            answers
+          });
+        } catch (error) {
+          console.error("Failed to save session data:", error);
+          // Don't interrupt the flow, just log the error
+        }
+      }
+      
+      setCurrentQuestion("Can you tell me about a time you faced a technical challenge and how you overcame it?");
       setIsLoading(false);
+      setIsEvaluatingAnswer(false);
+      
+      toast.error('Failed to get AI feedback. Continuing with generic questions.');
     }
-  };
-  
-  const handleEndInterview = () => {
+  };  const handleEndInterview = async () => {
+    // Save final session data before ending
+    if (currentSession && questionAnswers.length > 0) {
+      try {
+        const questions = questionAnswers.map(qa => qa.question);
+        const answers = questionAnswers.map(qa => qa.answer);
+        await interviewService.updateSession(currentSession.id, {
+          questions,
+          answers,
+          completed: true
+        });
+      } catch (error) {
+        console.error("Failed to save final session data:", error);
+      }
+    }
+    
     setSessionStarted(false);
     setMessages([]);
     setCurrentQuestion('');
     setInterviewSummary({
       role: selectedRole,
-      difficulty: difficulty,
+      difficulty: difficulty, // We keep the UI difficulty for display purposes
+      apiDifficulty: mapDifficulty(difficulty), // Store the API difficulty for reference
       questions: questionAnswers
     });
     setQuestionAnswers([]);
     setShowConfetti(true);
+    
+    // Show success message
+    showSuccessToast('Interview completed! Check your performance summary below.');
+    
     // Hide confetti after 6 seconds
     setTimeout(() => {
       setShowConfetti(false);
     }, 6000);
-  };  
+  };
   
   return (
     <div className="max-w-5xl mx-auto">
@@ -249,18 +369,18 @@ const InterviewSession = () => {
             onDifficultySelect={handleDifficultySelect}
             selectedDifficulty={difficulty}
           />
-          
-          <div className="flex flex-col items-center mt-8">
-            <button
+            <div className="flex flex-col items-center mt-8">
+            <LoadingButton
               onClick={startInterview}
               disabled={!selectedRole}
+              isLoading={isLoading}
               className={`
-                btn ${!selectedRole ? 'bg-light-border dark:bg-dark-border text-light-text/50 dark:text-dark-text/50 cursor-not-allowed' : 'btn-primary'}
+                ${!selectedRole ? 'bg-light-border dark:bg-dark-border text-light-text/50 dark:text-dark-text/50 cursor-not-allowed' : 'btn-primary'}
                 px-6 py-3 rounded-lg text-white font-medium text-sm shadow transition-all duration-200
               `}
             >
-              Start Your Interview
-            </button>
+              {isLoading ? 'Starting Interview...' : 'Start Your Interview'}
+            </LoadingButton>
             
             <p className="mt-3 text-sm text-light-text/60 dark:text-dark-text/60">
               {selectedRole ? `Prepare for your ${selectedRole} interview - ${difficulty} level` : 'Select a role to begin'}
