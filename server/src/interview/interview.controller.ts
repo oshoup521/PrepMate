@@ -211,4 +211,76 @@ export class InterviewController {
       throw error;
     }
   }
+
+  @ApiOperation({ summary: 'End interview session with summary generation' })
+  @ApiResponse({ status: 200, description: 'Session ended successfully with summary' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @ApiParam({ name: 'id', description: 'Session UUID' })
+  @UseGuards(JwtAuthGuard)
+  @Post('sessions/:id/end')
+  async endSession(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) sessionId: string
+  ) {
+    try {
+      this.logger.debug(`Ending session: ${sessionId} for user: ${req.user.id}`);
+      return await this.interviewService.endInterviewSession(sessionId, req.user.id);
+    } catch (error) {
+      this.logger.error(`Error ending session: ${error.message}`);
+      if (error.message.includes('not found')) {
+        throw new NotFoundException('Session not found');
+      }
+      if (error.message.includes('no data')) {
+        throw new BadRequestException('Cannot end session with no interview data');
+      }
+      throw error;
+    }
+  }
+
+  @ApiOperation({ summary: 'Add question and answer to session' })
+  @ApiResponse({ status: 200, description: 'Question and answer added successfully' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @ApiParam({ name: 'id', description: 'Session UUID' })
+  @UseGuards(JwtAuthGuard)
+  @Post('sessions/:id/qa')
+  async addQuestionAnswer(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) sessionId: string,
+    @Body() qaData: { question: string; answer: string; evaluation?: any }
+  ) {
+    try {
+      this.logger.debug(`Adding Q&A to session: ${sessionId} for user: ${req.user.id}`);
+      return await this.interviewService.addQuestionAnswer(
+        sessionId, 
+        req.user.id, 
+        qaData.question, 
+        qaData.answer, 
+        qaData.evaluation
+      );
+    } catch (error) {
+      this.logger.error(`Error adding Q&A: ${error.message}`);
+      if (error.message.includes('not found')) {
+        throw new NotFoundException('Session not found');
+      }
+      if (error.message.includes('required')) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @ApiOperation({ summary: 'Get user progress statistics' })
+  @ApiResponse({ status: 200, description: 'User progress retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @UseGuards(JwtAuthGuard)
+  @Get('progress')
+  async getUserProgress(@Request() req) {
+    try {
+      this.logger.debug(`Getting progress for user: ${req.user.id}`);
+      return await this.interviewService.getUserProgress(req.user.id);
+    } catch (error) {
+      this.logger.error(`Error getting user progress: ${error.message}`);
+      throw error;
+    }
+  }
 }

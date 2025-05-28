@@ -96,3 +96,24 @@ export class GenerateSummaryDto {
   @IsUUID('4', { message: 'Session ID must be a valid UUID' })
   sessionId: string;
 }
+
+export class AddQuestionAnswerDto {
+  @IsNotEmpty({ message: 'Question is required' })
+  @IsString({ message: 'Question must be a string' })
+  @Length(1, 2000, { message: 'Question must be between 1 and 2000 characters' })
+  question: string;
+
+  @IsNotEmpty({ message: 'Answer is required' })
+  @IsString({ message: 'Answer must be a string' })
+  @Length(1, 5000, { message: 'Answer must be between 1 and 5000 characters' })
+  answer: string;
+
+  @IsOptional()
+  evaluation?: any;
+}
+
+export class EndSessionDto {
+  @IsOptional()
+  @IsBoolean({ message: 'Generate summary must be a boolean' })
+  generateSummary?: boolean;
+}

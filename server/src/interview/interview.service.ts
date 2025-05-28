@@ -571,4 +571,212 @@ export class InterviewService {
       throw new Error(`Failed to generate interview summary: ${error.message}`);
     }
   }
+
+  async endInterviewSession(sessionId: string, userId: string): Promise<any> {
+    try {
+      if (!sessionId || typeof sessionId !== 'string') {
+        throw new Error('Session ID is required and must be a string');
+      }
+      this.validateUserId(userId);
+
+      this.logger.debug(`Ending interview session: ${sessionId}, user: ${userId}`);
+
+      const session = await this.getSession(sessionId, userId);
+      
+      if (!session.questions || !session.answers || session.questions.length === 0) {
+        throw new Error('Cannot end session with no interview data');
+      }
+
+      // Generate summary if not already generated
+      let summary = session.summary;
+      if (!summary) {
+        summary = await this.generateInterviewSummary(sessionId, userId);
+      }
+
+      // Mark session as completed
+      const updatedSession = await this.updateSessionData(sessionId, userId, {
+        completed: true,
+        status: 'completed',
+        summary: summary,
+        updatedAt: new Date()
+      });
+
+      // Clear relevant caches
+      await this.cacheService.del(`user_sessions:${userId}`);
+      await this.cacheService.del(`session:${sessionId}:${userId}`);
+
+      return {
+        session: updatedSession,
+        summary: summary,
+        message: 'Interview session ended successfully'
+      };
+      
+    } catch (error) {
+      this.logger.error('Error ending interview session:', error);
+      throw new Error(`Failed to end interview session: ${error.message}`);
+    }
+  }
+
+  async addQuestionAnswer(sessionId: string, userId: string, question: string, answer: string, evaluation?: any): Promise<InterviewSession> {
+    try {
+      if (!sessionId || typeof sessionId !== 'string') {
+        throw new Error('Session ID is required and must be a string');
+      }
+      this.validateUserId(userId);
+      if (!question || typeof question !== 'string') {
+        throw new Error('Question is required and must be a string');
+      }
+      if (!answer || typeof answer !== 'string') {
+        throw new Error('Answer is required and must be a string');
+      }
+
+      this.logger.debug(`Adding Q&A to session: ${sessionId}, user: ${userId}`);
+
+      const session = await this.getSession(sessionId, userId);
+      
+      // Ensure questions and answers are arrays
+      const questions = Array.isArray(session.questions) ? [...session.questions] : [];
+      const answers = Array.isArray(session.answers) ? [...session.answers] : [];
+      
+      // Add the new question and answer
+      questions.push(question);
+      answers.push(answer);
+
+      // Update session status to in_progress if it was active
+      let status = session.status;
+      if (status === 'active') {
+        status = 'in_progress';
+      }
+
+      const updatedSession = await this.updateSessionData(sessionId, userId, {
+        questions: questions,
+        answers: answers,
+        status: status
+      });
+
+      // Clear user sessions cache to reflect updates
+      await this.cacheService.del(`user_sessions:${userId}`);
+
+      return updatedSession;
+      
+    } catch (error) {
+      this.logger.error('Error adding question-answer pair:', error);
+      throw new Error(`Failed to add question-answer pair: ${error.message}`);
+    }
+  }
+
+  async getUserProgress(userId: string): Promise<any> {
+    try {
+      this.validateUserId(userId);
+
+      this.logger.debug(`Getting user progress for: ${userId}`);
+
+      // Try to get from cache first
+      const cacheKey = `user_progress:${userId}`;
+      const cachedProgress = await this.cacheService.get<any>(cacheKey);
+      
+      if (cachedProgress && typeof cachedProgress === 'object') {
+        this.logger.debug(`Cache hit for user progress: ${userId}`);
+        return {
+          ...cachedProgress,
+          fromCache: true
+        };
+      }
+
+      const sessions = await this.getUserSessions(userId);
+      
+      const totalSessions = sessions.length;
+      const completedSessions = sessions.filter(s => s.completed && s.status === 'completed');
+      const activeSessions = sessions.filter(s => s.status === 'active');
+      const inProgressSessions = sessions.filter(s => s.status === 'in_progress' && !s.completed);
+
+      // Calculate average score from completed sessions with summaries
+      let totalScore = 0;
+      let scoreCount = 0;
+      completedSessions.forEach(session => {
+        if (session.summary && session.summary.overallScore && !isNaN(parseFloat(session.summary.overallScore))) {
+          totalScore += parseFloat(session.summary.overallScore);
+          scoreCount++;
+        }
+      });
+      const averageScore = scoreCount > 0 ? parseFloat((totalScore / scoreCount).toFixed(1)) : 0;
+
+      // Calculate role frequency
+      const roleCount: Record<string, number> = {};
+      sessions.forEach(session => {
+        roleCount[session.role] = (roleCount[session.role] || 0) + 1;
+      });
+      const topRoles = Object.entries(roleCount)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([role, count]) => ({ role, count: count as number }));
+
+      // Calculate recent activity (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentSessions = sessions.filter(session => {
+        const sessionDate = new Date(session.createdAt);
+        return sessionDate >= thirtyDaysAgo;
+      });
+
+      // Weekly progress (last 7 days)
+      const weeklyProgress: Array<{ date: string; fullDate: string; count: number }> = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const daySessionsCount = sessions.filter(session => {
+          const sessionDate = new Date(session.createdAt);
+          return sessionDate.toDateString() === date.toDateString();
+        }).length;
+        
+        weeklyProgress.push({
+          date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          fullDate: date.toISOString().split('T')[0],
+          count: daySessionsCount
+        });
+      }
+
+      // Calculate streak (consecutive days with activity)
+      let streakDays = 0;
+      const today = new Date();
+      for (let i = 0; i < 30; i++) {
+        const checkDate = new Date();
+        checkDate.setDate(checkDate.getDate() - i);
+        const hasActivity = sessions.some(session => {
+          const sessionDate = new Date(session.createdAt);
+          return sessionDate.toDateString() === checkDate.toDateString();
+        });
+        
+        if (hasActivity) {
+          streakDays++;
+        } else if (i > 0) { // Don't break on day 0 (today) if no activity
+          break;
+        }
+      }
+
+      const progressData = {
+        totalSessions,
+        completedSessions: completedSessions.length,
+        activeSessions: activeSessions.length,
+        inProgressSessions: inProgressSessions.length,
+        averageScore,
+        streakDays,
+        topRoles,
+        recentSessions: recentSessions.length,
+        weeklyProgress,
+        lastSessionDate: sessions.length > 0 ? sessions[0].createdAt : null,
+        generatedAt: new Date().toISOString()
+      };
+
+      // Cache progress for 30 minutes
+      await this.cacheService.set(cacheKey, progressData, 1800000);
+      
+      return progressData;
+      
+    } catch (error) {
+      this.logger.error('Error getting user progress:', error);
+      throw new Error(`Failed to get user progress: ${error.message}`);
+    }
+  }
 }

@@ -123,6 +123,46 @@ export const interviewService = {
       throw error;
     }
   },
+
+  endSession: async (sessionId) => {
+    try {
+      const response = await apiClient.post(`/interview/sessions/${sessionId}/end`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  addQuestionAnswer: async (sessionId, question, answer, evaluation = null) => {
+    try {
+      const response = await apiClient.post(`/interview/sessions/${sessionId}/qa`, {
+        question,
+        answer,
+        evaluation,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  generateSummary: async (sessionId) => {
+    try {
+      const response = await apiClient.post(`/interview/sessions/${sessionId}/summary`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getUserProgress: async () => {
+    try {
+      const response = await apiClient.get('/interview/progress');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default interviewService;
