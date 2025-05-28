@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to PrepMate!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .feature {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Welcome to PrepMate!</h1>
+        <p>Your AI-Powered Interview Coach</p>
+    </div>
+    
+    <div class="content">
+        <h2>Hello {{name}}! 🎉</h2>
+        
+        <p>Congratulations! Your email has been verified and your PrepMate account is now active.</p>
+        
+        <p>You're now ready to supercharge your interview preparation with our AI-powered platform!</p>
+        
+        <h3>🚀 What you can do with PrepMate:</h3>
+        
+        <div class="feature">
+            <h4>🤖 AI-Powered Mock Interviews</h4>
+            <p>Practice with realistic interview scenarios powered by advanced AI</p>
+        </div>
+        
+        <div class="feature">
+            <h4>📊 Performance Analytics</h4>
+            <p>Track your progress and identify areas for improvement</p>
+        </div>
+        
+        <div class="feature">
+            <h4>🎯 Personalized Feedback</h4>
+            <p>Get detailed feedback on your responses and communication skills</p>
+        </div>
+        
+        <div class="feature">
+            <h4>💼 Industry-Specific Questions</h4>
+            <p>Practice with questions tailored to your field and experience level</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="{{loginUrl}}" class="button">Start Your First Interview</a>
+        </div>
+        
+        <h3>💡 Tips to Get Started:</h3>
+        <ul>
+            <li>Complete your profile for more personalized questions</li>
+            <li>Start with a practice session to get familiar with the platform</li>
+            <li>Review your feedback after each session</li>
+            <li>Set a regular practice schedule for best results</li>
+        </ul>
+        
+        <p>We're here to help you succeed in your next interview!</p>
+        
+        <p>Happy practicing!<br>
+        The PrepMate Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>Need help getting started? Contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+        <p>© 2024 PrepMate. All rights reserved.</p>
+    </div>
+</body>
+</html>
