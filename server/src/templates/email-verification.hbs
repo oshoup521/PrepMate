@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 PrepMate</h1>
+        <p>Your AI-Powered Interview Coach</p>
+    </div>
+    
+    <div class="content">
+        <h2>Hello {{name}}!</h2>
+        
+        <p>Welcome to PrepMate! We're excited to help you ace your next interview.</p>
+        
+        <p>To get started, please verify your email address by clicking the button below:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{verificationUrl}}" class="button">Verify Email Address</a>
+        </div>
+        
+        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #667eea;">{{verificationUrl}}</p>
+        
+        <p><strong>This verification link will expire in 24 hours.</strong></p>
+        
+        <p>If you didn't create an account with PrepMate, you can safely ignore this email.</p>
+        
+        <p>Happy interviewing!<br>
+        The PrepMate Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>Need help? Contact us at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+        <p>© 2024 PrepMate. All rights reserved.</p>
+    </div>
+</body>
+</html>

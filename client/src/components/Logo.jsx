@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Logo = ({ size = 'md' }) => {
+const Logo = ({ size = 'md', hideText = false }) => {
   const sizes = {
     sm: 'h-6',
     md: 'h-8',
@@ -25,15 +25,16 @@ const Logo = ({ size = 'md' }) => {
           <path d="M8 10h8" />
           <path d="M12 7v6" />
         </svg>
-      </div>
-      <div>
-        <h1 className={`font-bold ${size === 'sm' ? 'text-lg' : size === 'md' ? 'text-xl' : 'text-2xl'} text-forest dark:text-sage`}>
-          PrepMate
-        </h1>
-        <p className={`${size === 'sm' ? 'text-xs' : 'text-sm'} text-olive dark:text-sage/80`}>
-          AI Interview Coach
-        </p>
-      </div>
+      </div>      {!hideText && (
+        <div>
+          <h1 className={`font-bold ${size === 'sm' ? 'text-lg' : size === 'md' ? 'text-xl' : 'text-2xl'} text-forest dark:text-sage`}>
+            PrepMate
+          </h1>
+          <p className={`${size === 'sm' ? 'text-xs' : 'text-sm'} text-olive dark:text-sage/80`}>
+            AI Interview Coach
+          </p>
+        </div>
+      )}
     </div>
   );
 };

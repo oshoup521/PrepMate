@@ -1,0 +1,334 @@
+import React, { useEffect, useState, useContext } from 'react'
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
+import './App.css'
+import InterviewSession from './components/InterviewSession'
+import ThemeToggle from './components/ThemeToggle'
+import KeyboardShortcuts from './components/KeyboardShortcuts'
+import { ThemeContext } from './contexts/ThemeContext'
+import { AuthProvider } from './contexts/AuthContext'
+import Login from './components/Login'
+import Register from './components/Register'
+import ProtectedRoute from './components/ProtectedRoute'
+import Header from './components/Header'
+import Logo from './components/Logo'
+
+function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const { theme } = useContext(ThemeContext);
+  
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-light-bg dark:bg-dark-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full border-3 border-sage/30 dark:border-sage/20 border-t-forest dark:border-t-sage animate-spin mx-auto mb-3"></div>
+          <Logo size="md" />
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-light-bg dark:bg-dark-bg transition-colors duration-300">
+          <KeyboardShortcuts />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <div className="pt-6 pb-10 px-4">
+                    <Header />
+                    <main className="max-w-6xl mx-auto mt-6">
+                      <InterviewSession />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+              <button 
+                onClick={() => scrollToSection('features')}
+                className="text-forest dark:text-sage font-medium px-3 py-2 rounded-md hover:bg-forest/5 dark:hover:bg-sage/10 transition-colors"
+              >
+                Features
+              </button>
+              <button 
+                onClick={() => scrollToSection('about')}
+                className="text-light-text/70 dark:text-dark-text/70 px-3 py-2 rounded-md hover:bg-forest/5 dark:hover:bg-sage/10 hover:text-forest dark:hover:text-sage transition-colors"
+              >
+                About
+              </button>
+              <button 
+                onClick={() => scrollToSection('contact')}
+                className="text-light-text/70 dark:text-dark-text/70 px-3 py-2 rounded-md hover:bg-forest/5 dark:hover:bg-sage/10 hover:text-forest dark:hover:text-sage transition-colors"
+              >
+                Contact
+              </button>
+            </nav>
+          </div>
+        </div>
+      </header>
+      
+      <main className="max-w-6xl mx-auto space-y-20">
+        {/* Interview Session */}
+        <section id="interview">
+          <InterviewSession />
+        </section>
+
+        {/* Features Section */}
+        <section id="features" className="py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-forest dark:text-sage mb-4">
+              Why Choose PrepMate?
+            </h2>
+            <p className="text-lg text-light-text/80 dark:text-dark-text/80 max-w-3xl mx-auto">
+              Our AI-powered interview coach provides comprehensive practice sessions to help you ace your next interview
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">AI-Powered Questions</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Get role-specific interview questions generated by advanced AI, tailored to your experience level and industry
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Real-time Feedback</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Receive instant, detailed feedback on your answers with scores and improvement suggestions after each response
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Difficulty Levels</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Choose from beginner, intermediate, or advanced difficulty levels to match your experience and career stage
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Performance Reports</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Get comprehensive performance summaries with strengths, areas for improvement, and actionable tips
+              </p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V2a2 2 0 00-2-2h-4a2 2 0 00-2 2v2H8v2a2 2 0 002 2h4a2 2 0 002-2V6z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Multiple Roles</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Practice for various positions including Frontend, Backend, Full Stack, DevOps, Data Science, and more
+              </p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Dark/Light Mode</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80">
+                Practice comfortably with our beautiful dark and light themes, designed for extended study sessions
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* About Section */}
+        <section id="about" className="py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-forest dark:text-sage mb-4">
+              About PrepMate
+            </h2>
+            <p className="text-lg text-light-text/80 dark:text-dark-text/80 max-w-3xl mx-auto">
+              Empowering developers and tech professionals to ace their interviews with confidence
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <div className="card p-6 border-l-4 border-l-forest dark:border-l-sage">
+                <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Our Mission</h3>
+                <p className="text-light-text/80 dark:text-dark-text/80">
+                  To democratize interview preparation by providing accessible, AI-powered coaching that helps candidates 
+                  showcase their true potential and land their dream jobs in the tech industry.
+                </p>
+              </div>
+              
+              <div className="card p-6 border-l-4 border-l-olive dark:border-l-sage">
+                <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">How It Works</h3>
+                <p className="text-light-text/80 dark:text-dark-text/80">
+                  PrepMate uses advanced AI to generate realistic interview questions, evaluate your responses, 
+                  and provide personalized feedback. Our system adapts to your chosen role and difficulty level, 
+                  ensuring relevant and challenging practice sessions.
+                </p>
+              </div>
+              
+              <div className="card p-6 border-l-4 border-l-sage">
+                <h3 className="text-xl font-bold text-forest dark:text-sage mb-3">Built for Success</h3>
+                <p className="text-light-text/80 dark:text-dark-text/80">
+                  Whether you're a fresh graduate or an experienced professional, PrepMate helps you prepare 
+                  for technical interviews, behavioral questions, and everything in between. Practice until perfect!
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-forest/5 to-sage/10 dark:from-forest/5 dark:to-sage/5 rounded-2xl p-8">
+              <div className="text-center space-y-8">
+                <div className="w-24 h-24 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-forest dark:text-sage">Ready to excel?</h3>
+                  <p className="text-light-text/80 dark:text-dark-text/80">
+                    Join thousands of developers who have improved their interview skills with PrepMate
+                  </p>
+                  <button 
+                    onClick={() => scrollToSection('interview')}
+                    className="btn btn-primary px-6 py-3 text-sm"
+                  >
+                    Start Practicing Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Section */}
+        <section id="contact" className="py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-forest dark:text-sage mb-4">
+              Get in Touch
+            </h2>
+            <p className="text-lg text-light-text/80 dark:text-dark-text/80 max-w-3xl mx-auto">
+              Have questions, feedback, or suggestions? We'd love to hear from you!
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Email Us */}
+            <div 
+              className="card p-8 text-center hover:shadow-lg transition-all duration-300 cursor-pointer group"
+              onClick={() => window.open('mailto:support@prepmate.ai', '_blank')}
+            >
+              <div className="w-20 h-20 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-forest dark:text-sage mb-3">Email Us</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80 mb-4">
+                Send us an email for detailed inquiries and support requests
+              </p>
+              <div className="bg-forest/5 dark:bg-sage/5 rounded-lg px-4 py-2 inline-block">
+                <p className="text-forest dark:text-sage font-medium">
+                  support@prepmate.ai
+                </p>
+              </div>
+            </div>
+            
+            {/* WhatsApp Live Chat */}
+            <div 
+              className="card p-8 text-center hover:shadow-lg transition-all duration-300 cursor-pointer group"
+              onClick={() => window.open('https://wa.me/919044127435', '_blank')}
+            >
+              <div className="w-20 h-20 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-forest dark:text-sage" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.570-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.465 3.516z"/>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-forest dark:text-sage mb-3">Live Chat</h3>
+              <p className="text-light-text/80 dark:text-dark-text/80 mb-4">
+                Get instant help via WhatsApp - available 24/7 for quick support
+              </p>
+              <div className="bg-forest/5 dark:bg-sage/5 rounded-lg px-4 py-2 inline-block">
+                <p className="text-forest dark:text-sage font-medium">
+                  +91 90441 27435
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Additional Contact Info */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center justify-center space-x-2 bg-sage/10 dark:bg-sage/5 rounded-full px-6 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-light-text/80 dark:text-dark-text/80 text-sm">
+                We typically respond within 2-4 hours during business hours
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+      
+      <footer className="max-w-6xl mx-auto mt-20 text-center text-sm text-light-text/60 dark:text-dark-text/60 border-t border-light-border dark:border-dark-border pt-8">
+        <p>© 2025 PrepMate. All rights reserved.</p>
+        <p className="mt-1">Your AI-powered interview preparation assistant</p>
+        <p className="mt-2 flex items-center justify-center">
+          <span className="inline-flex items-center bg-light-border/50 dark:bg-dark-border rounded px-2 py-1 text-xs">
+            <kbd className="px-1 mr-1">Shift</kbd>+<kbd className="px-1 ml-1">?</kbd>
+          </span>
+          <span className="ml-1">for keyboard shortcuts</span>
+        </p>
+      </footer>
+    </div>
+  )
+}
+
+export default App
