@@ -1,214 +1,236 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import Logo from './Logo';
+import React, { useState, useContext } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import AuthContext from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import Logo from './Logo';
+import { Button, IconButton } from './LoadingSpinner';
 
 const Header = () => {
-  const { currentUser, logout, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { currentUser, logout } = useContext(AuthContext);
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
-    setIsMobileMenuOpen(false);
+    setIsMenuOpen(false);
   };
 
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
+  const closeMenu = () => {
+    setIsMenuOpen(false);
   };
 
-  const isActiveLink = (path) => {
+  const isActive = (path) => {
     return location.pathname === path;
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-    { name: 'Templates', href: '/templates', icon: '📝' },
-    { name: 'Progress', href: '/progress', icon: '📈' },
-    { name: 'Interview', href: '/interview', icon: '🎯' },
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v4H8V5z" />
+      </svg>
+    )},
+    { path: '/interview', label: 'Interview', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+      </svg>
+    )},
+    { path: '/templates', label: 'Templates', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    )},
+    { path: '/progress', label: 'Progress', icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    )}
   ];
 
   return (
-    <header className="bg-white/95 dark:bg-dark-muted/95 backdrop-blur-sm shadow-sm border-b border-light-border dark:border-dark-border sticky top-0 z-40">
+    <header className="bg-white dark:bg-dark-muted border-b border-light-border dark:border-dark-border sticky top-0 z-50 backdrop-blur-sm bg-white/95 dark:bg-dark-muted/95">
       <div className="container-responsive">
-        <div className="flex justify-between items-center h-16 sm:h-18">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center">
-            <Link 
-              to={isAuthenticated ? "/dashboard" : "/"} 
-              className="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity duration-200"
-              onClick={closeMobileMenu}
-            >
-              <Logo size="sm" />
-            </Link>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-1">
-            {isAuthenticated && (
-              <nav className="flex space-x-1">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`header-link ${isActiveLink(item.href) ? 'header-link-active' : ''}`}
-                  >
-                    <span className="mr-2 text-sm">{item.icon}</span>
-                    {item.name}
-                  </Link>
-                ))}
-              </nav>
-            )}
-          </div>
+          <Link to={currentUser ? '/dashboard' : '/'} className="flex items-center">
+            <Logo size="sm" />
+          </Link>
 
-          {/* Right side actions */}
-          <div className="flex items-center space-x-3">
-            {/* Theme toggle */}
+          {/* Desktop Navigation */}
+          {currentUser && (
+            <nav className="hidden lg:flex items-center space-x-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`header-link ${isActive(item.path) ? 'header-link-active' : ''}`}
+                  onClick={closeMenu}
+                >
+                  <span className="hidden xl:flex items-center space-x-2">
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </span>
+                  <span className="xl:hidden">
+                    {item.icon}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          )}
+
+          {/* Right Side Actions */}
+          <div className="flex items-center space-x-2">
+            {/* Theme Toggle */}
             <ThemeToggle />
-            
-            {isAuthenticated ? (
+
+            {currentUser ? (
               <>
-                {/* User info - Hidden on mobile */}
-                <div className="hidden sm:flex items-center space-x-3">
+                {/* User Info - Desktop */}
+                <div className="hidden lg:flex items-center space-x-3">
                   <div className="text-right">
                     <p className="text-sm font-medium text-light-text dark:text-dark-text">
-                      {currentUser?.name || 'User'}
+                      {currentUser.name}
                     </p>
                     <p className="text-xs text-light-text/60 dark:text-dark-text/60">
-                      Welcome back
+                      {currentUser.email}
                     </p>
                   </div>
-                  <div className="w-8 h-8 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-forest dark:text-sage">
-                      {(currentUser?.name || 'U').charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">
+                      {currentUser.name?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 </div>
 
-                {/* Desktop logout button */}
-                <button
+                {/* Logout Button - Desktop */}
+                <Button
                   onClick={handleLogout}
-                  className="hidden lg:inline-flex btn btn-ghost btn-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-800"
+                  variant="ghost"
+                  size="sm"
+                  className="hidden lg:flex"
+                  leftIcon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  }
                 >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
                   Logout
-                </button>
+                </Button>
 
-                {/* Mobile menu button */}
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="lg:hidden p-2 rounded-lg text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5 transition-colors duration-200"
-                  aria-label="Toggle mobile menu"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {isMobileMenuOpen ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                {/* Mobile Menu Button */}
+                <IconButton
+                  icon={
+                    isMenuOpen ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    )}
-                  </svg>
-                </button>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    )
+                  }
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="lg:hidden"
+                  aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+                  aria-expanded={isMenuOpen}
+                />
               </>
             ) : (
-              <div className="flex space-x-2">
-                <Link
-                  to="/login"
-                  className="btn btn-ghost btn-sm"
+              /* Auth Buttons - Not logged in */
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => navigate('/login')}
+                  variant="ghost"
+                  size="sm"
                 >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="btn btn-primary btn-sm"
+                  Sign In
+                </Button>
+                <Button
+                  onClick={() => navigate('/register')}
+                  variant="primary"
+                  size="sm"
                 >
-                  Register
-                </Link>
+                  Sign Up
+                </Button>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && isAuthenticated && (
-        <div className="mobile-menu">
-          <div 
-            className="mobile-menu-overlay"
-            onClick={closeMobileMenu}
-          />
-          <div className={`mobile-menu-panel ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="flex flex-col h-full">
-              {/* Mobile menu header */}
-              <div className="flex items-center justify-between p-4 border-b border-light-border dark:border-dark-border">
-                <Logo size="sm" />
-                <button
-                  onClick={closeMobileMenu}
-                  className="p-2 rounded-lg text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5"
-                >
+      {/* Mobile Menu */}
+      {currentUser && isMenuOpen && (
+        <div className="mobile-menu lg:hidden">
+          <div className="mobile-menu-overlay" onClick={closeMenu} />
+          <div className="mobile-menu-panel">
+            <div className="flex items-center justify-between mb-6">
+              <Logo size="sm" />
+              <IconButton
+                icon={
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                }
+                onClick={closeMenu}
+                aria-label="Close menu"
+              />
+            </div>
+
+            {/* User Info - Mobile */}
+            <div className="flex items-center space-x-3 mb-6 p-4 bg-forest/5 dark:bg-sage/5 rounded-lg">
+              <div className="w-12 h-12 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                <span className="text-lg font-medium text-white">
+                  {currentUser.name?.charAt(0).toUpperCase()}
+                </span>
               </div>
-
-              {/* User info section */}
-              <div className="p-4 border-b border-light-border dark:border-dark-border bg-forest/5 dark:bg-sage/5">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center">
-                    <span className="text-lg font-medium text-forest dark:text-sage">
-                      {(currentUser?.name || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-light-text dark:text-dark-text">
-                      {currentUser?.name || 'User'}
-                    </p>
-                    <p className="text-sm text-light-text/60 dark:text-dark-text/60">
-                      {currentUser?.email || 'user@example.com'}
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <p className="font-medium text-light-text dark:text-dark-text">
+                  {currentUser.name}
+                </p>
+                <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+                  {currentUser.email}
+                </p>
               </div>
+            </div>
 
-              {/* Navigation links */}
-              <nav className="flex-1 p-4 space-y-2">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={closeMobileMenu}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-                      isActiveLink(item.href)
-                        ? 'bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage border border-forest/20 dark:border-sage/20'
-                        : 'text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5'
-                    }`}
-                  >
-                    <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium">{item.name}</span>
-                    {isActiveLink(item.href) && (
-                      <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full ml-auto" />
-                    )}
-                  </Link>
-                ))}
-              </nav>
-
-              {/* Mobile menu footer */}
-              <div className="p-4 border-t border-light-border dark:border-dark-border">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+            {/* Navigation Links - Mobile */}
+            <nav className="space-y-2 mb-6">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`
+                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200
+                    ${isActive(item.path) 
+                      ? 'bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage' 
+                      : 'text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5'
+                    }
+                  `}
+                  onClick={closeMenu}
                 >
+                  {item.icon}
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+
+            {/* Logout Button - Mobile */}
+            <div className="border-t border-light-border dark:border-dark-border pt-4">
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                fullWidth
+                leftIcon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  <span className="font-medium">Logout</span>
-                </button>
-              </div>
+                }
+              >
+                Logout
+              </Button>
             </div>
           </div>
         </div>

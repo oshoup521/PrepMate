@@ -224,14 +224,10 @@ export class InterviewController {
   ) {
     try {
       this.logger.debug(`Ending session: ${sessionId} for user: ${req.user.id}`);
-      return await this.interviewService.endInterviewSession(sessionId, req.user.id);
-    } catch (error) {
+      return await this.interviewService.endInterviewSession(sessionId, req.user.id);    } catch (error) {
       this.logger.error(`Error ending session: ${error.message}`);
       if (error.message.includes('not found')) {
         throw new NotFoundException('Session not found');
-      }
-      if (error.message.includes('no data')) {
-        throw new BadRequestException('Cannot end session with no interview data');
       }
       throw error;
     }

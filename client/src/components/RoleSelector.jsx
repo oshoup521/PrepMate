@@ -33,24 +33,24 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
     {
       id: 'backend-developer',
       title: 'Backend Developer',
-      description: 'APIs, databases, microservices, cloud architecture',
+      description: 'Node.js, Python, Java, databases, APIs',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
         </svg>
       ),
-      color: 'from-purple-500 to-violet-500',
+      color: 'from-purple-500 to-indigo-500',
       bgColor: 'bg-purple-50 dark:bg-purple-900/10',
       textColor: 'text-purple-600 dark:text-purple-400',
       borderColor: 'border-purple-200 dark:border-purple-800'
     },
     {
-      id: 'devops-engineer',
-      title: 'DevOps Engineer',
-      description: 'CI/CD, Docker, Kubernetes, AWS, monitoring',
+      id: 'data-scientist',
+      title: 'Data Scientist',
+      description: 'Machine learning, Python, statistics, analytics',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
       color: 'from-orange-500 to-red-500',
@@ -59,26 +59,30 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
       borderColor: 'border-orange-200 dark:border-orange-800'
     },
     {
-      id: 'data-scientist',
-      title: 'Data Scientist',
-      description: 'Machine learning, statistics, Python, R, analytics',
+      id: 'devops-engineer',
+      title: 'DevOps Engineer',
+      description: 'CI/CD, Docker, Kubernetes, cloud platforms',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
-      color: 'from-indigo-500 to-purple-500',
-      bgColor: 'bg-indigo-50 dark:bg-indigo-900/10',
-      textColor: 'text-indigo-600 dark:text-indigo-400',
-      borderColor: 'border-indigo-200 dark:border-indigo-800'
+      color: 'from-gray-500 to-gray-600',
+      bgColor: 'bg-gray-50 dark:bg-gray-900/10',
+      textColor: 'text-gray-600 dark:text-gray-400',
+      borderColor: 'border-gray-200 dark:border-gray-800'
     },
     {
       id: 'product-manager',
       title: 'Product Manager',
-      description: 'Strategy, roadmaps, user research, stakeholder management',
+      description: 'Strategy, roadmaps, user research, analytics',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5h2a2 2 0 012 2v6a2 2 0 01-2 2h-2a2 2 0 01-2-2V7a2 2 0 012-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 17v-2a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2z" />
         </svg>
       ),
       color: 'from-pink-500 to-rose-500',
@@ -127,16 +131,18 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {roles.map((role) => (
-            <div
+            <button
               key={role.id}
               onClick={() => onRoleSelect(role.id)}
               className={`
-                role-card group cursor-pointer transition-all duration-300
+                role-card group text-left transition-all duration-300 focus-ring
                 ${selectedRole === role.id 
                   ? `${role.bgColor} ${role.borderColor} border-2 ring-4 ring-opacity-20 ring-offset-2 ring-offset-light-bg dark:ring-offset-dark-bg transform scale-[1.02] shadow-lg` 
                   : 'card card-interactive hover:shadow-md hover:scale-[1.01]'
                 }
               `}
+              aria-pressed={selectedRole === role.id}
+              aria-describedby={`role-${role.id}-description`}
             >
               <div className="p-4 sm:p-6">
                 <div className={`
@@ -153,26 +159,29 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
                   {role.title}
                 </h4>
                 
-                <p className="text-sm text-light-text/70 dark:text-dark-text/70 leading-relaxed">
+                <p 
+                  id={`role-${role.id}-description`}
+                  className="text-sm text-light-text/70 dark:text-dark-text/70 leading-relaxed"
+                >
                   {role.description}
                 </p>
 
                 {selectedRole === role.id && (
                   <div className="mt-4 flex items-center text-sm font-medium text-forest dark:text-sage">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     Selected
                   </div>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Difficulty Selection */}
-      <div className={`transition-all duration-500 ${selectedRole ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 pointer-events-none'}`}>
+      <div>
         <div className="text-center mb-6">
           <h3 className="text-xl sm:text-2xl font-bold text-light-text dark:text-dark-text mb-2">
             Select Difficulty Level
@@ -184,82 +193,64 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           {difficulties.map((difficulty) => (
-            <div
+            <button
               key={difficulty.id}
               onClick={() => selectedRole && onDifficultySelect(difficulty.id)}
+              disabled={!selectedRole}
               className={`
-                difficulty-card group cursor-pointer transition-all duration-300
+                difficulty-card group text-left transition-all duration-300 focus-ring
                 ${!selectedRole ? 'opacity-50 cursor-not-allowed' : ''}
                 ${selectedDifficulty === difficulty.id 
                   ? 'bg-forest/10 dark:bg-sage/10 border-2 border-forest dark:border-sage ring-4 ring-forest/20 dark:ring-sage/20 ring-offset-2 ring-offset-light-bg dark:ring-offset-dark-bg transform scale-[1.02] shadow-lg' 
                   : 'card card-interactive hover:shadow-md hover:scale-[1.01]'
                 }
               `}
+              aria-pressed={selectedDifficulty === difficulty.id}
+              aria-describedby={`difficulty-${difficulty.id}-description`}
+              aria-disabled={!selectedRole}
             >
-              <div className="p-4 sm:p-6 text-center">
-                <div className="text-3xl sm:text-4xl mb-3">
-                  {difficulty.icon}
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-3xl" role="img" aria-label={difficulty.title}>
+                    {difficulty.icon}
+                  </div>
+                  <span className={`status-badge ${difficulty.color}`}>
+                    {difficulty.title}
+                  </span>
                 </div>
-                
-                <h4 className="text-lg font-semibold text-light-text dark:text-dark-text mb-2">
+
+                <h4 className="text-lg font-semibold text-light-text dark:text-dark-text mb-2 group-hover:text-forest dark:group-hover:text-sage transition-colors">
                   {difficulty.title}
                 </h4>
                 
-                <p className="text-sm text-light-text/70 dark:text-dark-text/70 mb-4 leading-relaxed">
+                <p 
+                  id={`difficulty-${difficulty.id}-description`}
+                  className="text-sm text-light-text/70 dark:text-dark-text/70 leading-relaxed"
+                >
                   {difficulty.description}
                 </p>
 
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${difficulty.color}`}>
-                  {difficulty.title} Level
-                </div>
-
                 {selectedDifficulty === difficulty.id && (
-                  <div className="mt-4 flex items-center justify-center text-sm font-medium text-forest dark:text-sage">
+                  <div className="mt-4 flex items-center text-sm font-medium text-forest dark:text-sage">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     Selected
                   </div>
                 )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
-      </div>
 
-      {/* Selection Summary */}
-      {selectedRole && selectedDifficulty && (
-        <div className="animate-fadeIn">
-          <div className="card bg-gradient-to-r from-forest/5 to-sage/5 dark:from-forest/10 dark:to-sage/10 border border-forest/20 dark:border-sage/20">
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-light-text dark:text-dark-text">
-                      Ready to Start!
-                    </h4>
-                    <p className="text-sm text-light-text/70 dark:text-dark-text/70">
-                      {roles.find(r => r.id === selectedRole)?.title} • {difficulties.find(d => d.id === selectedDifficulty)?.title} Level
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 text-sm text-forest dark:text-sage">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span className="font-medium">Scroll down to begin</span>
-                </div>
-              </div>
-            </div>
+        {!selectedRole && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+              Please select a role first to choose difficulty level
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

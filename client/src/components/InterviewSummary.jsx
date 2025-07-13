@@ -1,5 +1,5 @@
 import React from 'react';
-import { LoadingButton } from './LoadingSpinner';
+import { Button } from './LoadingSpinner';
 
 const InterviewSummary = ({ summary, onReset }) => {
   if (!summary) return null;
@@ -293,25 +293,33 @@ const InterviewSummary = ({ summary, onReset }) => {
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <LoadingButton
+        <Button
           onClick={onReset}
-          className="btn btn-primary btn-lg w-full sm:w-auto"
+          variant="primary"
+          size="lg"
+          className="w-full sm:w-auto"
+          leftIcon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          }
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
           Start New Interview
-        </LoadingButton>
+        </Button>
         
-        <button
+        <Button
           onClick={() => window.history.back()}
-          className="btn btn-secondary btn-lg w-full sm:w-auto"
+          variant="secondary"
+          size="lg"
+          className="w-full sm:w-auto"
+          leftIcon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          }
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
           Back to Dashboard
-        </button>
+        </Button>
         
         <button
           onClick={() => window.print()}

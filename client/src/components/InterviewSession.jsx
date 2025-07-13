@@ -3,7 +3,7 @@ import RoleSelector from './RoleSelector';
 import ChatInterface from './ChatInterface';
 import InterviewSummary from './InterviewSummary';
 import ConfettiEffect from './ConfettiEffect';
-import { LoadingCard, LoadingButton } from './LoadingSpinner';
+import { LoadingCard, Button } from './LoadingSpinner';
 import interviewService from '../services/interviewService';
 import AuthContext from '../contexts/AuthContext';
 import { showSuccessToast, showLoadingToast, dismissToast } from '../utils/errorHandler';
@@ -431,35 +431,24 @@ const InterviewSession = () => {
           
           {/* Start Button */}
           <div className="text-center">
-            <LoadingButton
+            <Button
               onClick={startInterview}
               disabled={!selectedRole}
-              isLoading={isLoading}
-              className={`
-                ${!selectedRole 
-                  ? 'btn btn-ghost opacity-50 cursor-not-allowed' 
-                  : 'btn btn-primary btn-lg shadow-lg hover:shadow-xl'
-                }
-                w-full sm:w-auto px-8 py-4 text-base sm:text-lg
-              `}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Starting Interview...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              loading={isLoading}
+              variant="primary"
+              size="xl"
+              className="w-full sm:w-auto shadow-lg hover:shadow-xl"
+              loadingText="Starting Interview..."
+              leftIcon={
+                !isLoading && (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Start Your Interview
-                </>
-              )}
-            </LoadingButton>
+                )
+              }
+            >
+              Start Your Interview
+            </Button>
             
             <p className="mt-4 text-sm text-light-text/60 dark:text-dark-text/60">
               {selectedRole 
@@ -486,15 +475,19 @@ const InterviewSession = () => {
                     <p className="text-white/80 text-sm">{difficulty} level • {questionAnswers.length} questions completed</p>
                   </div>
                 </div>
-                <button 
+                <Button
                   onClick={handleEndInterview}
-                  className="btn bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/50 btn-sm"
+                  variant="ghost"
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/50"
+                  leftIcon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  }
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
                   End Interview
-                </button>
+                </Button>
               </div>
             </div>
           </div>

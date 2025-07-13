@@ -1,23 +1,26 @@
 import React from 'react';
 
-const LoadingSpinner = ({ size = 'md', color = 'indigo' }) => {
+const LoadingSpinner = ({ size = 'md', color = 'current' }) => {
   const sizeClasses = {
+    xs: 'w-3 h-3',
     sm: 'w-4 h-4',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12',
-    xl: 'w-16 h-16'
+    md: 'w-6 h-6',
+    lg: 'w-8 h-8',
+    xl: 'w-12 h-12'
   };
 
   const colorClasses = {
-    indigo: 'text-indigo-600',
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    red: 'text-red-600',
-    gray: 'text-gray-600'
+    current: 'text-current',
+    primary: 'text-forest dark:text-sage',
+    white: 'text-white',
+    gray: 'text-gray-500',
+    blue: 'text-blue-500',
+    green: 'text-green-500',
+    red: 'text-red-500'
   };
 
   return (
-    <div className="flex justify-center items-center">
+    <div className="flex items-center justify-center">
       <div className={`animate-spin ${sizeClasses[size]} ${colorClasses[color]}`}>
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -28,36 +31,197 @@ const LoadingSpinner = ({ size = 'md', color = 'indigo' }) => {
   );
 };
 
-const LoadingPage = ({ message = 'Loading...' }) => {
+const LoadingPage = ({ message = 'Loading...', className = '' }) => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <LoadingSpinner size="xl" />
-      <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">{message}</p>
+    <div className={`min-h-screen flex flex-col items-center justify-center bg-light-bg dark:bg-dark-bg ${className}`}>
+      <LoadingSpinner size="xl" color="primary" />
+      <p className="mt-6 text-lg text-light-text/70 dark:text-dark-text/70 text-center max-w-md">
+        {message}
+      </p>
     </div>
   );
 };
 
 const LoadingCard = ({ message = 'Loading...', className = '' }) => {
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center ${className}`}>
-      <LoadingSpinner size="lg" />
-      <p className="mt-4 text-gray-600 dark:text-gray-400">{message}</p>
+    <div className={`card p-8 text-center ${className}`}>
+      <LoadingSpinner size="lg" color="primary" />
+      <p className="mt-4 text-light-text/70 dark:text-dark-text/70">{message}</p>
     </div>
   );
 };
 
-const LoadingButton = ({ loading, children, className = '', ...props }) => {
+const LoadingButton = ({ 
+  loading = false, 
+  disabled = false,
+  children, 
+  className = '', 
+  variant = 'primary',
+  size = 'md',
+  leftIcon,
+  rightIcon,
+  loadingText,
+  ...props 
+}) => {
+  const isDisabled = loading || disabled;
+  
+  // Base button classes
+  let buttonClasses = `btn btn-${variant} btn-${size}`;
+  
+  // Add loading state
+  if (loading) {
+    buttonClasses += ' btn-loading';
+  }
+  
+  // Add custom classes
+  if (className) {
+    buttonClasses += ` ${className}`;
+  }
+
   return (
     <button
-      className={`flex items-center justify-center space-x-2 ${className}`}
-      disabled={loading}
+      className={buttonClasses}
+      disabled={isDisabled}
       {...props}
     >
-      {loading && <LoadingSpinner size="sm" color="white" />}
-      <span>{children}</span>
+      {loading && (
+        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+      )}
+      
+      {!loading && leftIcon && (
+        <span className="mr-2">{leftIcon}</span>
+      )}
+      
+      <span className={loading ? 'opacity-0' : ''}>
+        {loading && loadingText ? loadingText : children}
+      </span>
+      
+      {!loading && rightIcon && (
+        <span className="ml-2">{rightIcon}</span>
+      )}
     </button>
   );
 };
 
-export { LoadingSpinner, LoadingPage, LoadingCard, LoadingButton };
+// Enhanced Button component with better props
+const Button = ({ 
+  variant = 'primary', 
+  size = 'md', 
+  loading = false, 
+  disabled = false,
+  leftIcon,
+  rightIcon,
+  loadingText,
+  fullWidth = false,
+  children, 
+  className = '', 
+  ...props 
+}) => {
+  const isDisabled = loading || disabled;
+  
+  let buttonClasses = `btn btn-${variant} btn-${size}`;
+  
+  if (loading) {
+    buttonClasses += ' btn-loading';
+  }
+  
+  if (fullWidth) {
+    buttonClasses += ' w-full';
+  }
+  
+  if (className) {
+    buttonClasses += ` ${className}`;
+  }
+
+  return (
+    <button
+      className={buttonClasses}
+      disabled={isDisabled}
+      {...props}
+    >
+      {loading && (
+        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+      )}
+      
+      {!loading && leftIcon && (
+        <span className="mr-2 flex items-center">{leftIcon}</span>
+      )}
+      
+      <span className={loading ? 'opacity-0' : ''}>
+        {loading && loadingText ? loadingText : children}
+      </span>
+      
+      {!loading && rightIcon && (
+        <span className="ml-2 flex items-center">{rightIcon}</span>
+      )}
+    </button>
+  );
+};
+
+// Icon Button component
+const IconButton = ({ 
+  icon, 
+  variant = 'ghost', 
+  size = 'md', 
+  loading = false, 
+  disabled = false,
+  'aria-label': ariaLabel,
+  tooltip,
+  className = '', 
+  ...props 
+}) => {
+  const isDisabled = loading || disabled;
+  
+  let buttonClasses = `btn btn-${variant} btn-${size} !p-2`;
+  
+  if (loading) {
+    buttonClasses += ' btn-loading';
+  }
+  
+  if (className) {
+    buttonClasses += ` ${className}`;
+  }
+
+  return (
+    <button
+      className={buttonClasses}
+      disabled={isDisabled}
+      aria-label={ariaLabel}
+      title={tooltip || ariaLabel}
+      {...props}
+    >
+      {loading ? (
+        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+      ) : (
+        icon
+      )}
+    </button>
+  );
+};
+
+// Loading Skeleton component
+const LoadingSkeleton = ({ className = '', width = 'w-full', height = 'h-4' }) => {
+  return (
+    <div className={`loading-skeleton ${width} ${height} ${className}`}></div>
+  );
+};
+
+// Loading Shimmer component
+const LoadingShimmer = ({ className = '', children }) => {
+  return (
+    <div className={`loading-shimmer ${className}`}>
+      {children}
+    </div>
+  );
+};
+
 export default LoadingSpinner;
+export { 
+  LoadingPage, 
+  LoadingCard, 
+  LoadingButton, 
+  Button, 
+  IconButton, 
+  LoadingSkeleton, 
+  LoadingShimmer 
+};
