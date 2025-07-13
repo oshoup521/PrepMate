@@ -163,6 +163,16 @@ const Dashboard = () => {
 
   return (
     <div className="container-responsive section-spacing">
+      {/* Debug Info - Remove in production */}
+      {import.meta.env.DEV && (
+        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm">
+          <strong>🔧 Debug Info:</strong><br/>
+          API URL: {import.meta.env.VITE_API_URL || 'http://localhost:3000'}<br/>
+          User ID: {currentUser?.id}<br/>
+          User Agent: {navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="mb-8 sm:mb-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">

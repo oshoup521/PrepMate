@@ -42,14 +42,29 @@ export const AuthProvider = ({ children }) => {
   }, []);
   const login = async (email, password) => {
     try {
-      console.log('Sending login request to:', `${API_URL}/auth/login`);
+      console.log('🔐 Login attempt started');
+      console.log('📍 API URL:', API_URL);
+      console.log('🌐 Environment VITE_API_URL:', import.meta.env.VITE_API_URL);
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🔗 Full login URL:', `${API_URL}/auth/login`);
+      
       const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password,
       });
 
       const { access_token, user } = response.data;
-      console.log('Login successful, received token and user data');
+      console.log('✅ Login successful');
+      console.log('👤 User received:', { id: user.id, email: user.email, name: user.name });
+      console.log('🎫 Token received (first 20 chars):', access_token.substring(0, 20) + '...');
+      
+      // Decode and log token payload for debugging
+      try {
+        const tokenPayload = jwtDecode(access_token);
+        console.log('🔍 Token payload:', tokenPayload);
+      } catch (decodeError) {
+        console.error('❌ Failed to decode token:', decodeError);
+      }
       
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -59,7 +74,12 @@ export const AuthProvider = ({ children }) => {
       
       return user;
     } catch (error) {
-      console.error('Login error details:', error.response?.data || error.message);
+      console.error('❌ Login error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
       throw error;
     }
   };
