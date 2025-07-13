@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthContext from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
@@ -12,14 +12,34 @@ const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
-    setIsMenuOpen(false);
+    console.log('🚪 Logout function called');
+    try {
+      logout();
+      navigate('/login');
+      setIsMenuOpen(false);
+      console.log('✅ Logout completed successfully');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    }
   };
 
   const closeMenu = () => {
     setIsMenuOpen(false);
   };
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [isMenuOpen]);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -50,7 +70,8 @@ const Header = () => {
   ];
 
   return (
-    <header className="bg-white dark:bg-dark-muted border-b border-light-border dark:border-dark-border sticky top-0 z-50 backdrop-blur-sm bg-white/95 dark:bg-dark-muted/95">
+    <>
+      <header className="bg-white dark:bg-dark-muted border-b border-light-border dark:border-dark-border sticky top-0 z-50 backdrop-blur-sm bg-white/95 dark:bg-dark-muted/95">
       <div className="container-responsive">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -132,8 +153,17 @@ const Header = () => {
                       </svg>
                     )
                   }
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="lg:hidden"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                  }}
+                  className="lg:hidden touch-manipulation"
                   aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
                   aria-expanded={isMenuOpen}
                 />
@@ -161,81 +191,106 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {currentUser && isMenuOpen && (
-        <div className="mobile-menu lg:hidden">
-          <div className="mobile-menu-overlay" onClick={closeMenu} />
-          <div className="mobile-menu-panel">
-            <div className="flex items-center justify-between mb-6">
-              <Logo size="sm" />
-              <IconButton
-                icon={
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                }
-                onClick={closeMenu}
-                aria-label="Close menu"
-              />
-            </div>
+          </header>
+    
+    {/* Mobile Menu Portal - Outside header to avoid z-index stacking context issues */}
+    {currentUser && isMenuOpen && (
+      <div className="mobile-menu lg:hidden">
+        <div 
+          className="mobile-menu-overlay" 
+          onClick={closeMenu}
+          onTouchEnd={closeMenu}
+        />
+        <div className="mobile-menu-panel">
+          {/* Header - Fixed */}
+          <div className="flex items-center justify-between mb-4 flex-shrink-0">
+            <Logo size="sm" />
+            <IconButton
+              icon={
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              }
+              onClick={closeMenu}
+              aria-label="Close menu"
+              className="z-10"
+            />
+          </div>
 
+          {/* Scrollable Content */}
+          <div className="flex-1 flex flex-col min-h-0">
             {/* User Info - Mobile */}
-            <div className="flex items-center space-x-3 mb-6 p-4 bg-forest/5 dark:bg-sage/5 rounded-lg">
-              <div className="w-12 h-12 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
-                <span className="text-lg font-medium text-white">
+            <div className="flex items-center space-x-3 mb-4 p-3 bg-forest/5 dark:bg-sage/5 rounded-lg flex-shrink-0">
+              <div className="w-10 h-10 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                <span className="text-base font-medium text-white">
                   {currentUser.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div>
-                <p className="font-medium text-light-text dark:text-dark-text">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-light-text dark:text-dark-text truncate">
                   {currentUser.name}
                 </p>
-                <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+                <p className="text-sm text-light-text/60 dark:text-dark-text/60 truncate">
                   {currentUser.email}
                 </p>
               </div>
             </div>
 
             {/* Navigation Links - Mobile */}
-            <nav className="space-y-2 mb-6">
+            <nav className="space-y-1 flex-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200
+                    flex items-center space-x-3 px-3 py-3 rounded-lg transition-colors duration-200 cursor-pointer
                     ${isActive(item.path) 
                       ? 'bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage' 
                       : 'text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5'
                     }
                   `}
                   onClick={closeMenu}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    closeMenu();
+                  }}
                 >
                   {item.icon}
                   <span className="font-medium">{item.label}</span>
                 </Link>
               ))}
             </nav>
+          </div>
 
-            {/* Logout Button - Mobile */}
-            <div className="border-t border-light-border dark:border-dark-border pt-4">
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                fullWidth
-                leftIcon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                }
-              >
-                Logout
-              </Button>
-            </div>
+          {/* Logout Button - Mobile - Fixed at bottom */}
+          <div className="border-t border-light-border dark:border-dark-border pt-3 flex-shrink-0">
+            <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLogout();
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleLogout();
+                }}
+              variant="ghost"
+              fullWidth
+              className="touch-manipulation"
+              leftIcon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              }
+            >
+              Logout
+            </Button>
           </div>
         </div>
-      )}
-    </header>
+      </div>
+    )}
+  </>
   );
 };
 
