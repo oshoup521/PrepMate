@@ -181,6 +181,7 @@ html {
     @apply fixed inset-0 bg-black/50 backdrop-blur-sm;
     touch-action: manipulation;
     z-index: 99998 !important;
+    pointer-events: auto;
   }
   
   .mobile-menu-panel {
@@ -196,6 +197,7 @@ html {
     transform: translateX(0);
     transition: transform 0.3s ease-in-out;
     z-index: 99999 !important;
+    pointer-events: auto;
   }
   
   /* Prevent body scroll when mobile menu is open */

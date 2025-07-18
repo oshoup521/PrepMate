@@ -59,6 +59,7 @@ async function bootstrap() {
       'JWT-auth'
     )
     .addServer('http://localhost:3000', 'Development server')
+    .addServer('https://crack-leading-feline.ngrok-free.app', 'Ngrok tunnel')
     .addServer('https://your-production-domain.com', 'Production server')
     .build();
 
@@ -85,19 +86,57 @@ async function bootstrap() {
       'http://localhost:3000',
       'https://crack-leading-feline.ngrok-free.app',
     ];
-    
-  // Enable CORS for the frontend - allowing all origins in development mode
-  app.enableCors({
-    origin: process.env.NODE_ENV === 'development' 
-      ? true // Allow all origins in development mode
-      : origins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+
+  // Enhanced CORS configuration for ngrok and external hosts
+  const corsOptions = {
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // In development, allow all origins
+      if (process.env.NODE_ENV === 'development') {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in allowed list
+      if (origins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Allow ngrok domains
+      if (origin.includes('.ngrok.io') || origin.includes('.ngrok-free.app')) {
+        return callback(null, true);
+      }
+      
+      // Allow localhost with any port
+      if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
+        return callback(null, true);
+      }
+      
+      callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-Access-Token',
+      'X-Key',
+      'Cache-Control'
+    ],
     credentials: true,
-  });
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  };
+    
+  // Enable CORS for the frontend
+  app.enableCors(corsOptions);
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0'); // Listen on all interfaces
   logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Application is running on all interfaces: http://0.0.0.0:${port}`);
   logger.log(`API Documentation available at: http://localhost:${port}/api`);
 }
 bootstrap();

@@ -198,10 +198,14 @@ const Header = () => {
       <div className="mobile-menu lg:hidden">
         <div 
           className="mobile-menu-overlay" 
-          onClick={closeMenu}
-          onTouchEnd={closeMenu}
+          onClick={(e) => {
+            // Only close if clicking directly on the overlay, not on child elements
+            if (e.target === e.currentTarget) {
+              closeMenu();
+            }
+          }}
         />
-        <div className="mobile-menu-panel">
+        <div className="mobile-menu-panel" onClick={(e) => e.stopPropagation()}>
           {/* Header - Fixed */}
           <div className="flex items-center justify-between mb-4 flex-shrink-0">
             <Logo size="sm" />
@@ -243,17 +247,17 @@ const Header = () => {
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center space-x-3 px-3 py-3 rounded-lg transition-colors duration-200 cursor-pointer
+                    flex items-center space-x-3 px-3 py-3 rounded-lg transition-colors duration-200 cursor-pointer touch-manipulation
                     ${isActive(item.path) 
                       ? 'bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage' 
                       : 'text-light-text dark:text-dark-text hover:bg-forest/5 dark:hover:bg-sage/5'
                     }
                   `}
-                  onClick={closeMenu}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
+                  onClick={(e) => {
+                    // Ensure navigation works on mobile
                     closeMenu();
                   }}
+                  style={{ touchAction: 'manipulation', pointerEvents: 'auto' }}
                 >
                   {item.icon}
                   <span className="font-medium">{item.label}</span>
