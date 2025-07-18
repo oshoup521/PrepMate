@@ -109,18 +109,7 @@ html {
     @apply px-8 py-4 text-lg;
   }
   
-  /* Loading state for buttons */
-  .btn-loading {
-    @apply relative text-transparent pointer-events-none;
-  }
-  
-  .btn-loading::after {
-    @apply absolute inset-0 flex items-center justify-center;
-    content: '';
-    background-image: url("data:image/svg+xml,%3csvg class='animate-spin' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3ccircle class='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' stroke-width='4'%3e%3c/circle%3e%3cpath class='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'%3e%3c/path%3e%3c/svg%3e");
-    width: 20px;
-    height: 20px;
-  }
+  /* Loading state for buttons - handled by component */
   
   /* Card Components */
   .card {
@@ -322,15 +311,15 @@ html {
   }
   
   .chat-message {
-    @apply flex items-start space-x-3 p-4 rounded-lg;
+    @apply flex items-start space-x-3 p-4 sm:p-6 lg:p-8 rounded-lg;
   }
   
   .chat-message-ai {
-    @apply bg-forest/5 dark:bg-sage/5 border-l-4 border-forest dark:border-sage;
+    @apply bg-forest/5 dark:bg-sage/5 border-l-4 border-forest dark:border-sage max-w-none;
   }
   
   .chat-message-user {
-    @apply bg-olive/10 dark:bg-sand/10 border-l-4 border-olive dark:border-sand ml-auto;
+    @apply bg-olive/10 dark:bg-sand/10 border-l-4 border-olive dark:border-sand ml-auto max-w-none;
   }
   
   /* Summary Components */

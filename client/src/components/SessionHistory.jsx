@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import interviewService from '../services/interviewService';
-import { LoadingPage } from './LoadingSpinner';
-import { showErrorToast } from '../utils/errorHandler';
+import { LoadingPage, Button } from './LoadingSpinner';
+import { showErrorToast, showSuccessToast, showLoadingToast, dismissToast } from '../utils/errorHandler';
 
 const SessionHistory = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEndingSession, setIsEndingSession] = useState(false);
   const { sessionId } = useParams();
   const navigate = useNavigate();
 
@@ -25,6 +26,34 @@ const SessionHistory = () => {
       navigate('/dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResumeSession = () => {
+    navigate(`/interview?sessionId=${sessionId}`);
+  };
+
+  const handleEndSession = async () => {
+    if (!session) return;
+
+    setIsEndingSession(true);
+    const endingToast = showLoadingToast('Ending interview session and generating summary...');
+
+    try {
+      await interviewService.endSession(sessionId);
+      
+      dismissToast(endingToast);
+      showSuccessToast('Interview session ended successfully!');
+      
+      // Refresh the session data to show the updated status
+      await fetchSession();
+      
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      dismissToast(endingToast);
+      showErrorToast('Failed to end session. Please try again.');
+    } finally {
+      setIsEndingSession(false);
     }
   };
 
@@ -53,6 +82,8 @@ const SessionHistory = () => {
     return 'text-red-600 dark:text-red-400';
   };
 
+  const isActiveSession = session && !session.completed && (session.status === 'active' || session.status === 'in_progress');
+
   if (loading) {
     return <LoadingPage message="Loading interview session..." />;
   }
@@ -64,12 +95,12 @@ const SessionHistory = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Session Not Found
           </h1>
-          <button
+          <Button
             onClick={() => navigate('/dashboard')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            variant="primary"
           >
             Back to Dashboard
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -122,6 +153,45 @@ const SessionHistory = () => {
               <p className="font-medium text-gray-900 dark:text-white">{session.answers?.length || 0}</p>
             </div>
           </div>
+
+          {/* Action Buttons for Active Sessions */}
+          {isActiveSession && (
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={handleResumeSession}
+                  variant="primary"
+                  size="lg"
+                  leftIcon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-9-4V8a4 4 0 014-4h4a4 4 0 014 4v2" />
+                    </svg>
+                  }
+                >
+                  Resume Interview
+                </Button>
+                <Button
+                  onClick={handleEndSession}
+                  variant="secondary"
+                  size="lg"
+                  loading={isEndingSession}
+                  loadingText="Ending Session..."
+                  leftIcon={
+                    !isEndingSession && (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )
+                  }
+                >
+                  End Session
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Resume to continue the interview or end the session to generate a summary.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -174,9 +244,41 @@ const SessionHistory = () => {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No Interview Data
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
             This session doesn't have any recorded questions or answers yet.
           </p>
+          
+          {/* Show action buttons even when no data for active sessions */}
+          {isActiveSession && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                onClick={handleResumeSession}
+                variant="primary"
+                leftIcon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h8m-9-4V8a4 4 0 014-4h4a4 4 0 014 4v2" />
+                  </svg>
+                }
+              >
+                Resume Interview
+              </Button>
+              <Button
+                onClick={handleEndSession}
+                variant="secondary"
+                loading={isEndingSession}
+                loadingText="Ending Session..."
+                leftIcon={
+                  !isEndingSession && (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )
+                }
+              >
+                End Session
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

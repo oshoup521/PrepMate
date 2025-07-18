@@ -68,11 +68,6 @@ const LoadingButton = ({
   // Base button classes
   let buttonClasses = `btn btn-${variant} btn-${size}`;
   
-  // Add loading state
-  if (loading) {
-    buttonClasses += ' btn-loading';
-  }
-  
   // Add custom classes
   if (className) {
     buttonClasses += ` ${className}`;
@@ -84,21 +79,23 @@ const LoadingButton = ({
       disabled={isDisabled}
       {...props}
     >
-      {loading && (
-        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
-      )}
-      
-      {!loading && leftIcon && (
-        <span className="mr-2">{leftIcon}</span>
-      )}
-      
-      <span className={loading ? 'opacity-0' : ''}>
-        {loading && loadingText ? loadingText : children}
-      </span>
-      
-      {!loading && rightIcon && (
-        <span className="ml-2">{rightIcon}</span>
-      )}
+      <div className="flex items-center justify-center">
+        {loading && (
+          <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+        )}
+        
+        {!loading && leftIcon && (
+          <span className="mr-2">{leftIcon}</span>
+        )}
+        
+        <span className={loading ? 'ml-2' : ''}>
+          {loading && loadingText ? loadingText : children}
+        </span>
+        
+        {!loading && rightIcon && (
+          <span className="ml-2">{rightIcon}</span>
+        )}
+      </div>
     </button>
   );
 };
@@ -121,10 +118,6 @@ const Button = ({
   
   let buttonClasses = `btn btn-${variant} btn-${size}`;
   
-  if (loading) {
-    buttonClasses += ' btn-loading';
-  }
-  
   if (fullWidth) {
     buttonClasses += ' w-full';
   }
@@ -139,21 +132,23 @@ const Button = ({
       disabled={isDisabled}
       {...props}
     >
-      {loading && (
-        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
-      )}
-      
-      {!loading && leftIcon && (
-        <span className="mr-2 flex items-center">{leftIcon}</span>
-      )}
-      
-      <span className={loading ? 'opacity-0' : ''}>
-        {loading && loadingText ? loadingText : children}
-      </span>
-      
-      {!loading && rightIcon && (
-        <span className="ml-2 flex items-center">{rightIcon}</span>
-      )}
+      <div className="flex items-center justify-center">
+        {loading && (
+          <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+        )}
+        
+        {!loading && leftIcon && (
+          <span className="mr-2 flex items-center">{leftIcon}</span>
+        )}
+        
+        <span className={loading ? 'ml-2' : ''}>
+          {loading && loadingText ? loadingText : children}
+        </span>
+        
+        {!loading && rightIcon && (
+          <span className="ml-2 flex items-center">{rightIcon}</span>
+        )}
+      </div>
     </button>
   );
 };
@@ -174,10 +169,6 @@ const IconButton = ({
   
   let buttonClasses = `btn btn-${variant} btn-${size} !p-2`;
   
-  if (loading) {
-    buttonClasses += ' btn-loading';
-  }
-  
   if (className) {
     buttonClasses += ` ${className}`;
   }
@@ -190,11 +181,13 @@ const IconButton = ({
       title={tooltip || ariaLabel}
       {...props}
     >
-      {loading ? (
-        <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
-      ) : (
-        icon
-      )}
+      <div className="flex items-center justify-center">
+        {loading ? (
+          <LoadingSpinner size={size === 'sm' ? 'xs' : size === 'lg' ? 'sm' : 'xs'} color="current" />
+        ) : (
+          icon
+        )}
+      </div>
     </button>
   );
 };

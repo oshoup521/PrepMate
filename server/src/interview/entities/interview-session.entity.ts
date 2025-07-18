@@ -21,6 +21,9 @@ export class InterviewSession {
   @Column('json', { default: '[]' })
   answers: any[];
 
+  @Column('json', { default: '[]' })
+  evaluations: any[];
+
   @Column('json', { nullable: true })
   summary: any;
 

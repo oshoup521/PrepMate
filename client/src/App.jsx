@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import ScrollToTop from './components/ScrollToTop';
 import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -15,6 +16,9 @@ import EmailVerification from './components/EmailVerification';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
+import EmailTestInfo from './components/EmailTestInfo';
+import TermsOfService from './components/TermsOfService';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import './App.css';
 
 function App() {
@@ -22,6 +26,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
             <Header />
             <main className="container mx-auto px-4 py-8">
@@ -31,6 +36,8 @@ function App() {
                 <Route path="/verify-email" element={<EmailVerification />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route 
                   path="/dashboard" 
                   element={
@@ -106,6 +113,7 @@ function App() {
                 },
               }}
             />
+            <EmailTestInfo />
           </div>
         </Router>
       </AuthProvider>

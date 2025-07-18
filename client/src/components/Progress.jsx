@@ -10,7 +10,7 @@ const Progress = () => {
     completedSessions: 0,
     activeSessions: 0,
     inProgressSessions: 0,
-    averageScore: 0,
+    averageScore: null,
     streakDays: 0,
     topRoles: [],
     weeklyProgress: [],
@@ -66,7 +66,7 @@ const Progress = () => {
         scoreCount++;
       }
     });
-    const averageScore = scoreCount > 0 ? parseFloat((totalScore / scoreCount).toFixed(1)) : 0;
+    const averageScore = scoreCount > 0 ? parseFloat((totalScore / scoreCount).toFixed(1)) : null;
 
     // Calculate role frequency
     const roleCount = {};
@@ -173,7 +173,7 @@ const Progress = () => {
             <div className="min-w-0 flex-1">
               <p className="text-xs sm:text-sm font-medium text-light-text/60 dark:text-dark-text/60 truncate">Avg Score</p>
               <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                {stats.averageScore > 0 ? `${stats.averageScore}/10` : 'N/A'}
+                {stats.averageScore !== null && stats.averageScore !== undefined ? `${stats.averageScore}/10` : 'N/A'}
               </p>
             </div>
           </div>
@@ -322,14 +322,14 @@ const Progress = () => {
             </div>
             
             <div className={`p-4 rounded-xl text-center transition-all duration-200 ${
-              stats.averageScore >= 8 
+              stats.averageScore !== null && stats.averageScore >= 8 
                 ? 'bg-purple-100 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 scale-100' 
                 : 'bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 opacity-50'
             }`}>
               <div className="text-2xl sm:text-3xl mb-2">⭐</div>
               <p className="text-xs sm:text-sm font-medium text-light-text dark:text-dark-text">High Achiever</p>
               <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1">8+ average score</p>
-              {stats.averageScore >= 8 && (
+              {stats.averageScore !== null && stats.averageScore >= 8 && (
                 <div className="w-2 h-2 bg-green-500 rounded-full mx-auto mt-2"></div>
               )}
             </div>

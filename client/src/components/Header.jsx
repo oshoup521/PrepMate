@@ -12,14 +12,14 @@ const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    console.log('🚪 Logout function called');
+    
     try {
       logout();
       navigate('/login');
       setIsMenuOpen(false);
-      console.log('✅ Logout completed successfully');
+
     } catch (error) {
-      console.error('❌ Logout error:', error);
+      
     }
   };
 

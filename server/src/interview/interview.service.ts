@@ -93,17 +93,24 @@ export class InterviewService {
       this.validateRole(role);
       this.validateDifficulty(difficulty);
 
-      // Try to get from cache first
-      const cacheKey = `question:${role}:${difficulty}:${context || 'default'}`;
-      const cachedQuestion = await this.cacheService.get<any>(cacheKey);
+      // Create a more specific cache key that includes context hash to avoid repeated questions
+      const contextHash = context ? Buffer.from(context).toString('base64').slice(0, 20) : 'default';
+      const cacheKey = `question:${role}:${difficulty}:${contextHash}:${Date.now()}`;
       
-      if (cachedQuestion && typeof cachedQuestion === 'object' && cachedQuestion.question) {
-        this.logger.debug(`Cache hit for question generation: ${cacheKey}`);
-        return {
-          ...cachedQuestion,
-          fromCache: true,
-          timestamp: new Date().toISOString()
-        };
+      // Skip caching if context contains previous questions to ensure uniqueness
+      const shouldCache = !context || !context.includes('Previous questions');
+      
+      if (shouldCache) {
+        const cachedQuestion = await this.cacheService.get<any>(cacheKey);
+        
+        if (cachedQuestion && typeof cachedQuestion === 'object' && cachedQuestion.question) {
+          this.logger.debug(`Cache hit for question generation: ${cacheKey}`);
+          return {
+            ...cachedQuestion,
+            fromCache: true,
+            timestamp: new Date().toISOString()
+          };
+        }
       }
 
       this.logger.debug(`Generating new question for role: ${role}, difficulty: ${difficulty}`);
@@ -120,6 +127,7 @@ export class InterviewService {
       const prompt = `Generate a ${actualDifficulty} interview question for a ${role} position.
                      ${contextPrompt}
                      Make it specific, relevant, and appropriate for the role and difficulty level.
+                     ${context && context.includes('Previous questions') ? 'IMPORTANT: Avoid asking similar or duplicate questions. Create a unique question that explores different aspects of the role.' : ''}
                      Format the response as JSON with 'question' and 'context' fields.
                      The 'context' should include the ideal answer points the candidate should cover.`;
 
@@ -170,9 +178,12 @@ export class InterviewService {
         }
       }
 
-      // Cache the generated question for 30 minutes
-      await this.cacheService.set(cacheKey, questionData, 1800000);
-        return questionData;
+      // Cache the generated question for 30 minutes (only if we should cache)
+      if (shouldCache) {
+        await this.cacheService.set(cacheKey, questionData, 1800000);
+      }
+      
+      return questionData;
       
     } catch (error) {
       this.logger.error('Error generating question:', error);
@@ -288,6 +299,7 @@ export class InterviewService {
         description,
         questions: [],
         answers: [],
+        evaluations: [],
         completed: false,
         status: 'active', // Set initial status
       });
@@ -296,6 +308,10 @@ export class InterviewService {
       
       // Cache the session for quick access
       await this.cacheService.cacheUserSession(userId, savedSession);
+      
+      // Clear user progress cache to reflect new session
+      await this.cacheService.del(`user_progress:${userId}`);
+      await this.cacheService.del(`user_sessions:${userId}`);
       
       return savedSession;
     } catch (error) {
@@ -385,6 +401,10 @@ export class InterviewService {
       
       // Update cache
       await this.cacheService.cacheUserSession(userId, updatedSession);
+      
+      // Clear user progress cache to reflect session updates
+      await this.cacheService.del(`user_progress:${userId}`);
+      await this.cacheService.del(`user_sessions:${userId}`);
       
       return updatedSession;
     } catch (error) {
@@ -482,7 +502,8 @@ export class InterviewService {
 
       const interviewData = session.questions.map((q, index) => ({
         question: q,
-        answer: session.answers[index] || 'No answer provided'
+        answer: session.answers[index] || 'No answer provided',
+        evaluation: session.evaluations && session.evaluations[index] ? session.evaluations[index] : null
       }));
 
       const prompt = `Analyze this ${session.role} interview session and provide a comprehensive summary.
@@ -495,12 +516,23 @@ export class InterviewService {
                      
                      Please provide:
                      1. Overall performance score (1-10)
-                     2. Key strengths demonstrated
-                     3. Areas for improvement
-                     4. Specific recommendations for skill development
-                     5. Technical competency assessment
+                     2. Key strengths demonstrated (as array of strings)
+                     3. Areas for improvement (as array of strings)
+                     4. Specific recommendations for skill development (as detailed text)
+                     5. Technical competency assessment (as detailed text)
                      
-                     Format the response as JSON with fields: 'overallScore', 'strengths', 'improvements', 'recommendations', 'technicalAssessment'.`;
+                     IMPORTANT: Format all text content using proper markdown:
+                     - Use **bold** for important concepts, technologies, and key terms
+                     - Use *italic* for emphasis
+                     - Use \`code\` for technical terms, function names, and code snippets
+                     - Use ### for section headers within recommendations
+                     - Use - for bullet points in lists
+                     - Use > for important quotes or tips
+                     
+                     Format the response as JSON with fields: 'overallScore', 'strengths', 'improvements', 'recommendations', 'technicalAssessment'.
+                     
+                     Example format for recommendations:
+                     "### Next Steps - **Fundamentals of Data Preprocessing:** Focus on mastering the fundamentals of data preprocessing, including techniques for handling missing data (mean/median/mode imputation, KNN imputation, regression imputation, deletion), handling skewed data (log transformation, winsorization, Box-Cox transformation), and feature scaling/normalization. - **Practice Problem Solving:** Work through practice problems and case studies that involve data preprocessing. This will help to solidify understanding and develop the ability to apply these techniques in different contexts."`;
 
       const text = await this.callAIWithTimeout<string>(prompt, 45000); // Longer timeout for summary generation
 
@@ -559,22 +591,145 @@ export class InterviewService {
         }
       }
 
+      // Helper function to safely extract array data
+      const safeExtractArray = (data) => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        
+        if (typeof data === 'string') {
+          // Check if it's a JSON string wrapped in markdown code blocks
+          if (data.includes('```json') && data.includes('```')) {
+            try {
+              const jsonMatch = data.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[1]);
+                if (parsed.strengths && Array.isArray(parsed.strengths)) return parsed.strengths;
+                if (parsed.improvements && Array.isArray(parsed.improvements)) return parsed.improvements;
+              }
+            } catch (e) {
+              // If parsing fails, continue with original string
+            }
+          }
+          
+          // Check if it's a plain JSON string
+          if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.strengths && Array.isArray(parsed.strengths)) return parsed.strengths;
+              if (parsed.improvements && Array.isArray(parsed.improvements)) return parsed.improvements;
+            } catch (e) {
+              // If parsing fails, continue with original string
+            }
+          }
+          
+          return [data];
+        }
+        
+        if (typeof data === 'object') {
+          // Try to extract array values from object
+          const values = Object.values(data);
+          const arrayValues = values.filter(v => Array.isArray(v));
+          if (arrayValues.length > 0) return arrayValues[0];
+          // Otherwise convert object values to array
+          return values.filter(v => typeof v === 'string' && v.length > 0);
+        }
+        return [data.toString()];
+      };
+
+      // Helper function to safely extract string data
+      const safeExtractString = (data) => {
+        if (!data) return '';
+        
+        if (typeof data === 'string') {
+          // Check if it's a JSON string wrapped in markdown code blocks
+          if (data.includes('```json') && data.includes('```')) {
+            try {
+              const jsonMatch = data.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[1]);
+                if (parsed.recommendations && typeof parsed.recommendations === 'string') return parsed.recommendations;
+                if (parsed.technicalAssessment && typeof parsed.technicalAssessment === 'string') return parsed.technicalAssessment;
+              }
+            } catch (e) {
+              // If parsing fails, continue with original string
+            }
+          }
+          
+          // Check if it's a plain JSON string
+          if (data.trim().startsWith('{') && data.trim().endsWith('}')) {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.recommendations && typeof parsed.recommendations === 'string') return parsed.recommendations;
+              if (parsed.technicalAssessment && typeof parsed.technicalAssessment === 'string') return parsed.technicalAssessment;
+            } catch (e) {
+              // If parsing fails, continue with original string
+            }
+          }
+          
+          return data;
+        }
+        
+        if (Array.isArray(data)) return data.join(' ');
+        if (typeof data === 'object') {
+          // Try to extract meaningful text from object
+          const values = Object.values(data).filter(v => typeof v === 'string' && v.length > 0);
+          return values.length > 0 ? values[0] : JSON.stringify(data);
+        }
+        return data.toString();
+      };
+
+      // Helper function to extract overall score from embedded JSON
+      const extractOverallScore = (data) => {
+        // First try the direct score
+        if (data.overallScore !== undefined && data.overallScore !== null && data.overallScore !== 'N/A') {
+          return data.overallScore;
+        }
+        
+        // Check if score is embedded in improvements field (as JSON)
+        if (data.improvements && Array.isArray(data.improvements)) {
+          for (const improvement of data.improvements) {
+            if (typeof improvement === 'string' && improvement.includes('```json')) {
+              try {
+                const jsonMatch = improvement.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+                if (jsonMatch) {
+                  const parsed = JSON.parse(jsonMatch[1]);
+                  if (parsed.overallScore !== undefined && parsed.overallScore !== null) {
+                    return parsed.overallScore;
+                  }
+                }
+              } catch (e) {
+                // Continue checking other improvements
+              }
+            }
+          }
+        }
+        
+        return data.overallScore || 'N/A';
+      };
+
+      // Extract and clean data with fallbacks
+      const extractedOverallScore = extractOverallScore(aiSummaryData);
+      const extractedStrengths = safeExtractArray(aiSummaryData.strengths);
+      const extractedImprovements = safeExtractArray(aiSummaryData.improvements);
+      const extractedRecommendations = safeExtractString(aiSummaryData.recommendations);
+      const extractedTechnicalAssessment = safeExtractString(aiSummaryData.technicalAssessment);
+
       // Create the summary structure that matches what the UI expects
       const summaryData = {
         totalQuestions: session.questions.length,
         totalAnswers: session.answers.length,
-        overallScore: aiSummaryData.overallScore,
-        feedback: aiSummaryData.recommendations || 'AI analysis completed successfully.',
-        strengths: Array.isArray(aiSummaryData.strengths) ? aiSummaryData.strengths : [aiSummaryData.strengths || 'Good engagement with the interview process'],
-        improvements: Array.isArray(aiSummaryData.improvements) ? aiSummaryData.improvements : [aiSummaryData.improvements || 'Continue practicing to improve your skills'],
+        overallScore: extractedOverallScore,
+        feedback: extractedRecommendations || 'AI analysis completed successfully.',
+        strengths: extractedStrengths.length > 0 ? extractedStrengths : ['Good engagement with the interview process'],
+        improvements: extractedImprovements.length > 0 ? extractedImprovements : ['Continue practicing to improve your skills'],
         detailedFeedback: interviewData.map((item, index) => ({
           question: item.question,
           answer: item.answer,
           feedback: `Question ${index + 1} feedback: This answer demonstrates your understanding and approach to the problem.`
         })),
         // Additional AI-generated fields for enhanced UI
-        recommendations: aiSummaryData.recommendations,
-        technicalAssessment: aiSummaryData.technicalAssessment,
+        recommendations: extractedRecommendations || 'Continue practicing to improve your interview skills.',
+        technicalAssessment: extractedTechnicalAssessment || 'Technical assessment completed.',
         sessionId: aiSummaryData.sessionId,
         generatedAt: aiSummaryData.generatedAt,
         role: aiSummaryData.role,
@@ -697,13 +852,20 @@ export class InterviewService {
 
       const session = await this.getSession(sessionId, userId);
       
-      // Ensure questions and answers are arrays
+      // Ensure questions, answers, and evaluations are arrays
       const questions = Array.isArray(session.questions) ? [...session.questions] : [];
       const answers = Array.isArray(session.answers) ? [...session.answers] : [];
+      const evaluations = Array.isArray(session.evaluations) ? [...session.evaluations] : [];
       
-      // Add the new question and answer
+      // Handle legacy sessions without evaluations array
+      while (evaluations.length < answers.length) {
+        evaluations.push(null);
+      }
+      
+      // Add the new question, answer, and evaluation
       questions.push(question);
       answers.push(answer);
+      evaluations.push(evaluation || null);
 
       // Update session status to in_progress if it was active
       let status = session.status;
@@ -714,11 +876,15 @@ export class InterviewService {
       const updatedSession = await this.updateSessionData(sessionId, userId, {
         questions: questions,
         answers: answers,
+        evaluations: evaluations,
         status: status
       });
 
       // Clear user sessions cache to reflect updates
       await this.cacheService.del(`user_sessions:${userId}`);
+      
+      // Clear session cache to force fresh load with new evaluation data
+      await this.cacheService.del(`session:${sessionId}:${userId}`);
 
       return updatedSession;
       
@@ -751,7 +917,7 @@ export class InterviewService {
       const totalSessions = sessions.length;
       const completedSessions = sessions.filter(s => s.completed && s.status === 'completed');
       const activeSessions = sessions.filter(s => s.status === 'active');
-      const inProgressSessions = sessions.filter(s => s.status === 'in_progress' && !s.completed);
+      const inProgressSessions = sessions.filter(s => (s.status === 'in_progress' || s.status === 'active') && !s.completed);
 
       // Calculate average score from completed sessions with summaries
       let totalScore = 0;
@@ -759,13 +925,13 @@ export class InterviewService {
       completedSessions.forEach(session => {
         if (session.summary && session.summary.overallScore !== undefined && session.summary.overallScore !== null) {
           const score = parseFloat(session.summary.overallScore);
-          if (!isNaN(score)) {
+          if (!isNaN(score) && score >= 0) { // Accept scores >= 0 (including 0)
             totalScore += score;
             scoreCount++;
           }
         }
       });
-      const averageScore = scoreCount > 0 ? parseFloat((totalScore / scoreCount).toFixed(1)) : 0;
+      const averageScore = scoreCount > 0 ? parseFloat((totalScore / scoreCount).toFixed(1)) : null;
 
       // Calculate role frequency
       const roleCount: Record<string, number> = {};

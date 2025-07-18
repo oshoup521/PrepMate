@@ -101,6 +101,29 @@ const Login = () => {
           </p>
         </div>
 
+        {/* Backend Info Note */}
+        <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border-2 border-amber-200 dark:border-amber-700 rounded-xl shadow-sm">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 mr-4">
+              <div className="w-8 h-8 bg-amber-100 dark:bg-amber-800 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600 dark:text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-amber-800 dark:text-amber-200 mb-2">
+                ⚡ Backend Information
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
+                Our backend is deployed on <strong>Render</strong> and goes to sleep when not used for a while. 
+                For the first API request, Render needs to start the deployment which may take <strong>30-60 seconds</strong>. 
+                Please have patience - the app will work normally once the deployment is completed! 🚀
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Login Card */}
         <div className="card card-elevated p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">

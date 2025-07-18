@@ -13,14 +13,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    console.log('🚀 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
-      hasToken: !!token,
-      tokenPreview: token ? token.substring(0, 20) + '...' : 'No token'
-    });
+
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,7 +21,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
+    
     return Promise.reject(error);
   }
 );
@@ -36,22 +29,11 @@ apiClient.interceptors.request.use(
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', {
-      method: response.config.method?.toUpperCase(),
-      url: response.config.url,
-      status: response.status,
-      dataSize: JSON.stringify(response.data).length
-    });
+
     return response;
   },
   (error) => {
-    console.error('❌ API Error:', {
-      method: error.config?.method?.toUpperCase(),
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    });
+
     handleApiError(error);
     return Promise.reject(error);
   }

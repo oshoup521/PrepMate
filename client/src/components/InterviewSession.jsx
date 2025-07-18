@@ -1,588 +1,646 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import RoleSelector from './RoleSelector';
 import ChatInterface from './ChatInterface';
 import InterviewSummary from './InterviewSummary';
 import ConfettiEffect from './ConfettiEffect';
 import { LoadingCard, Button } from './LoadingSpinner';
 import interviewService from '../services/interviewService';
-import AuthContext from '../contexts/AuthContext';
-import { showSuccessToast, showLoadingToast, dismissToast } from '../utils/errorHandler';
+import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
-import Logo from './Logo';
-
-// Mapping from UI difficulty to API difficulty
-const mapDifficulty = (uiDifficulty) => {
-  const difficultyMap = {
-    'beginner': 'easy',
-    'intermediate': 'medium',
-    'advanced': 'hard'
-  };
-  return difficultyMap[uiDifficulty] || 'medium'; // Default to medium if mapping not found
-};
 
 const InterviewSession = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const sessionId = searchParams.get('sessionId');
+  
+  // Core state
+  const [phase, setPhase] = useState('setup'); // 'setup', 'interview', 'completed'
   const [selectedRole, setSelectedRole] = useState('');
   const [difficulty, setDifficulty] = useState('intermediate');
-  const [sessionStarted, setSessionStarted] = useState(false);
+  const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
+  const [summary, setSummary] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
-  const [isEvaluatingAnswer, setIsEvaluatingAnswer] = useState(false);
-  const [interviewSummary, setInterviewSummary] = useState(null);
-  const [questionAnswers, setQuestionAnswers] = useState([]);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [currentSession, setCurrentSession] = useState(null);
+  const [isEndingInterview, setIsEndingInterview] = useState(false);
+  
   const chatContainerRef = useRef(null);
-  
-  // Scroll to bottom of chat when messages update
+
+  // Helper function to scroll to bottom
+  const scrollToBottom = (delay = 100) => {
+    setTimeout(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }, delay);
+  };
+
+  // Initialize session on mount
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (sessionId) {
+      loadExistingSession();
     }
+  }, [sessionId]);
+
+  // Auto-scroll chat when messages change
+  useEffect(() => {
+    scrollToBottom(100);
   }, [messages]);
-  
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
+
+  // Additional scroll trigger for question generation
+  useEffect(() => {
+    if (currentQuestion) {
+      scrollToBottom(150);
+    }
+  }, [currentQuestion]);
+
+  const loadExistingSession = async () => {
+    setIsLoading(true);
+    try {
+      const session = await interviewService.getSession(sessionId);
+      
+      if (session.completed) {
+        // Show completed session
+        setPhase('completed');
+        setSummary(session.summary);
+        setShowConfetti(true);
+        return;
+      }
+      
+      // Validate session data
+      if (!session.role || session.role.trim().length < 2) {
+        throw new Error('Invalid session data: role is missing or too short');
+      }
+      
+      // Resume active session
+      setCurrentSession(session);
+      setSelectedRole(session.role);
+      setDifficulty(session.difficulty === 'easy' ? 'beginner' : 
+                   session.difficulty === 'hard' ? 'advanced' : 'intermediate');
+      setPhase('interview');
+      
+      // Rebuild messages from session data
+      const sessionMessages = [];
+      if (session.questions && session.answers) {
+        for (let i = 0; i < session.questions.length; i++) {
+          sessionMessages.push({ sender: 'ai', text: session.questions[i] });
+          if (session.answers[i]) {
+            // Use stored evaluation data if available
+            const storedEvaluation = session.evaluations && session.evaluations[i] ? session.evaluations[i] : null;
+            sessionMessages.push({ 
+              sender: 'user', 
+              text: session.answers[i],
+              evaluation: storedEvaluation
+            });
+          }
+        }
+      }
+      setMessages(sessionMessages);
+      
+      // Set current question or generate new one
+      const lastQuestionIndex = session.questions?.length - 1;
+      const hasAnswerForLastQuestion = session.answers?.[lastQuestionIndex];
+      
+      if (!hasAnswerForLastQuestion && session.questions?.[lastQuestionIndex]) {
+        setCurrentQuestion(session.questions[lastQuestionIndex]);
+      } else {
+        // Generate new question using session data
+        console.log('Generating new question for resumed session:', { role: session.role, difficulty: session.difficulty });
+        await generateQuestionForSession(session.role, session.difficulty);
+      }
+      
+      // Scroll to bottom after loading session
+      scrollToBottom(300);
+      showSuccessToast('Session resumed successfully!');
+    } catch (error) {
+      console.error('Failed to load session:', error);
+      showErrorToast('Failed to load session');
+      navigate('/dashboard');
+    } finally {
+      setIsLoading(false);
+    }
   };
-  
-  const handleDifficultySelect = (difficultyLevel) => {
-    setDifficulty(difficultyLevel);
-  };
-  
-  const startInterview = async () => {
+
+  const startNewSession = async () => {
     if (!selectedRole) {
       toast.error('Please select a job role first');
       return;
     }
     
     setIsLoading(true);
-    setSessionStarted(true);
-    
-    const loadingToast = showLoadingToast('Starting your interview session...');
-    
     try {
-      // Map UI difficulty to API difficulty
-      const apiDifficulty = mapDifficulty(difficulty);
+      const apiDifficulty = difficulty === 'beginner' ? 'easy' : 
+                           difficulty === 'advanced' ? 'hard' : 'medium';
       
-      // Create a new session
       const session = await interviewService.createSession(selectedRole, apiDifficulty);
       setCurrentSession(session);
+      setPhase('interview');
       
-      // Get the first question from the AI
-      setIsGeneratingQuestion(true);
-      const questionData = await interviewService.generateQuestion(selectedRole, apiDifficulty);
+      await generateQuestion();
       
-      // Handle case where question might be a JSON string
-      let question = "";
-      if (typeof questionData.question === 'string') {
-        try {
-          // Try to parse it as JSON if it's a string that looks like JSON
-          if (questionData.question.trim().startsWith('{') || questionData.question.trim().startsWith('[')) {
-            const parsedQuestion = JSON.parse(questionData.question);
-            question = parsedQuestion.question || parsedQuestion;
-          } else {
-            question = questionData.question;
-          }
-        } catch (e) {
-          question = questionData.question;
-        }
-      } else {
-        question = questionData.question || "Let's begin the interview. Tell me about your experience with this role.";
-      }
-      
-      setCurrentQuestion(question);
-      setMessages([
-        { 
-          sender: 'ai', 
-          text: question 
-        }
-      ]);
-      
-      dismissToast(loadingToast);
-      showSuccessToast('Interview session started! Good luck!');
+      // Scroll to bottom after starting session
+      scrollToBottom(300);
+      showSuccessToast('Interview started! Good luck!');
     } catch (error) {
-      dismissToast(loadingToast);
-      console.error("Failed to start interview:", error);
-      
-      // Fallback with a generic question
-      const fallbackQuestion = "Let's begin the interview. Tell me about your background and experience in this field.";
-      setCurrentQuestion(fallbackQuestion);
-      setMessages([
-        { 
-          sender: 'ai', 
-          text: fallbackQuestion
-        }
-      ]);
-      
-      toast.error('Failed to connect to AI service. Starting with basic questions.');
+      console.error('Failed to start interview:', error);
+      showErrorToast('Failed to start interview');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const generateQuestion = async () => {
+    if (!selectedRole) {
+      console.error('No role selected for question generation');
+      return;
+    }
+    
+    setIsGeneratingQuestion(true);
+    try {
+      const apiDifficulty = difficulty === 'beginner' ? 'easy' : 
+                           difficulty === 'advanced' ? 'hard' : 'medium';
+      
+      // Create context from previous questions to avoid repetition
+      const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
+      const context = previousQuestions.length > 0 
+        ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
+        : undefined;
+      
+      const questionData = await interviewService.generateQuestion(selectedRole, apiDifficulty, context);
+      const question = questionData.question || "Tell me about your experience with this role.";
+      
+      // Check if this question was already asked
+      if (previousQuestions.includes(question)) {
+        // If it's a repeat, try again with more specific context
+        const specificContext = `Previous questions: ${previousQuestions.join('; ')}. This question was already asked: "${question}". Please ask a completely different question about ${selectedRole} role.`;
+        const retryQuestionData = await interviewService.generateQuestion(selectedRole, apiDifficulty, specificContext);
+        const retryQuestion = retryQuestionData.question || `Let's explore a different aspect of ${selectedRole} work. What challenges have you faced in your career?`;
+        
+        setCurrentQuestion(retryQuestion);
+        setMessages(prev => [...prev, { sender: 'ai', text: retryQuestion }]);
+      } else {
+        setCurrentQuestion(question);
+        setMessages(prev => [...prev, { sender: 'ai', text: question }]);
+        scrollToBottom(200); // Scroll after question is added
+      }
+    } catch (error) {
+      console.error('Failed to generate question:', error);
+      const questionNumber = messages.filter(m => m.sender === 'ai').length + 1;
+      const fallbackQuestion = `Question ${questionNumber}: Tell me about a challenging ${selectedRole || 'role'} project you've worked on recently.`;
+      setCurrentQuestion(fallbackQuestion);
+      setMessages(prev => [...prev, { sender: 'ai', text: fallbackQuestion }]);
+      scrollToBottom(200); // Scroll after fallback question is added
+    } finally {
       setIsGeneratingQuestion(false);
     }
   };
 
-  const handleSendMessage = async (userMessage) => {
-    if (!userMessage.trim() || !currentQuestion) return;
-    
-    // Add the user message to the chat
-    setMessages((prev) => [...prev, { sender: 'user', text: userMessage }]);
-    setIsLoading(true);
-    setIsEvaluatingAnswer(true);
-    
-    const evaluationToast = showLoadingToast('AI is evaluating your answer...');
-    
-    try {
-      // Map UI difficulty to API difficulty
-      const apiDifficulty = mapDifficulty(difficulty);
-      
-      // Get AI feedback on the answer
-      const evaluation = await interviewService.evaluateAnswer(
-        currentQuestion,
-        userMessage,
-        selectedRole,
-        apiDifficulty
-      );
-      
-      dismissToast(evaluationToast);
-      const questionToast = showLoadingToast('Generating next question...');
-      
-      // Generate the next question
-      const nextQuestionData = await interviewService.generateQuestion(selectedRole, apiDifficulty);
-      
-      dismissToast(questionToast);
-      
-      // Handle case where question might be a JSON string
-      let nextQuestion = "";
-      if (typeof nextQuestionData.question === 'string') {
-        try {
-          // Try to parse it as JSON if it's a string that looks like JSON
-          if (nextQuestionData.question.trim().startsWith('{') || nextQuestionData.question.trim().startsWith('[')) {
-            const parsedQuestion = JSON.parse(nextQuestionData.question);
-            nextQuestion = parsedQuestion.question || parsedQuestion;
-          } else {
-            nextQuestion = nextQuestionData.question;
-          }
-        } catch (e) {
-          nextQuestion = nextQuestionData.question;
-        }
-      } else {
-        nextQuestion = nextQuestionData.question || "Next question: Tell me about a challenging project you've worked on.";
-      }
-      
-      // Add the feedback message
-      setMessages((prev) => [
-        ...prev, 
-        { 
-          sender: 'ai', 
-          text: "Thank you for your answer. Here's some feedback:",
-          feedback: evaluation.feedback || "Your answer was interesting. Let's continue with another question.",
-          score: evaluation.score
-        }
-      ]);
-        
-      // Track this Q&A pair with feedback for summary
-      const newQuestionAnswers = [
-        ...questionAnswers, 
-        { 
-          question: currentQuestion, 
-          answer: userMessage, 
-          feedback: evaluation.feedback || "No specific feedback provided.",
-          score: evaluation.score,
-          improvementAreas: evaluation.improvement_areas || "No specific improvement areas identified."
-        }
-      ];
-      setQuestionAnswers(newQuestionAnswers);
-
-      // Save Q&A data to database using the new API endpoint
-      if (currentSession) {
-        try {
-          await interviewService.addQuestionAnswer(
-            currentSession.id, 
-            currentQuestion, 
-            userMessage, 
-            evaluation
-          );
-        } catch (error) {
-          console.error("Failed to save Q&A data:", error);
-          // Don't interrupt the flow, just log the error
-        }
-      }
-
-      // Add the next question after a short delay
-      setTimeout(() => {
-        setCurrentQuestion(nextQuestion);
-        setMessages((prev) => [
-          ...prev, 
-          { sender: 'ai', text: nextQuestion }
-        ]);
-        setIsLoading(false);
-        setIsEvaluatingAnswer(false);
-      }, 1000);
-      
-    } catch (error) {
-      dismissToast(evaluationToast);
-      console.error("Failed to process answer:", error);
-      
-      // Provide fallback feedback and next question
-      setMessages((prev) => [
-        ...prev, 
-        { 
-          sender: 'ai', 
-          text: "Thank you for your answer. Here's some feedback:",
-          feedback: "Your answer shows good understanding. Let's continue with the next question.",
-          score: 7
-        },
-        {
-          sender: 'ai',
-          text: "Can you tell me about a time you faced a technical challenge and how you overcame it?"
-        }
-      ]);
-        
-      // Track Q&A with fallback feedback
-      const newQuestionAnswers = [
-        ...questionAnswers, 
-        { 
-          question: currentQuestion, 
-          answer: userMessage, 
-          feedback: "System evaluation unavailable - answer recorded.",
-          score: 7,
-          improvementAreas: "Unable to provide specific feedback at this time."
-        }
-      ];
-      setQuestionAnswers(newQuestionAnswers);
-
-      // Try to save even fallback data
-      if (currentSession) {
-        try {
-          await interviewService.addQuestionAnswer(
-            currentSession.id, 
-            currentQuestion, 
-            userMessage, 
-            { feedback: "System evaluation unavailable", score: 7 }
-          );
-        } catch (saveError) {
-          console.error("Failed to save fallback Q&A data:", saveError);
-        }
-      }
-
-      setIsLoading(false);
-      setIsEvaluatingAnswer(false);
-    }
-  };
-
-  const handleEndInterview = async () => {
-    if (!currentSession) {
-      // If no session, just show local summary
-      setSessionStarted(false);
-      setMessages([]);
-      setCurrentQuestion('');
-      setInterviewSummary({
-        role: selectedRole,
-        difficulty: difficulty,
-        apiDifficulty: mapDifficulty(difficulty),
-        questions: questionAnswers
-      });
-      setQuestionAnswers([]);
-      setShowConfetti(true);
-      showSuccessToast('Interview completed! Check your performance summary below.');
-      setTimeout(() => setShowConfetti(false), 6000);
+  const generateQuestionForSession = async (role, sessionDifficulty) => {
+    if (!role) {
+      console.error('No role provided for question generation');
       return;
     }
-
-    const endingToast = showLoadingToast('Ending interview session and generating summary...');
     
+    if (role.trim().length < 2) {
+      console.error('Role is too short for question generation:', role);
+      return;
+    }
+    
+    setIsGeneratingQuestion(true);
     try {
-      // End the session properly with AI-generated summary
-      const endResult = await interviewService.endSession(currentSession.id);
+      const apiDifficulty = sessionDifficulty || 'medium';
+      console.log('Generating question with params:', { role, difficulty: apiDifficulty });
       
-      dismissToast(endingToast);
+      // Create context from previous questions to avoid repetition
+      const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
+      const context = previousQuestions.length > 0 
+        ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
+        : undefined;
       
-      // Reset UI state
-      setSessionStarted(false);
-      setMessages([]);
-      setCurrentQuestion('');
+      const questionData = await interviewService.generateQuestion(role, apiDifficulty, context);
+      const question = questionData.question || "Tell me about your experience with this role.";
       
-      // Set summary with AI-generated data
-      setInterviewSummary({
-        role: selectedRole,
-        difficulty: difficulty,
-        apiDifficulty: mapDifficulty(difficulty),
-        questions: questionAnswers,
-        aiSummary: endResult.summary, // Include AI-generated summary
-        session: endResult.session
-      });
-      
-      setQuestionAnswers([]);
-      setCurrentSession(null);
-      setShowConfetti(true);
-      
-      // Show success message
-      showSuccessToast('Interview completed! AI summary generated successfully.');
-      
-      // Hide confetti after 6 seconds
-      setTimeout(() => {
-        setShowConfetti(false);
-      }, 6000);
-      
+      // Check if this question was already asked
+      if (previousQuestions.includes(question)) {
+        // If it's a repeat, try again with more specific context
+        const specificContext = `Previous questions: ${previousQuestions.join('; ')}. This question was already asked: "${question}". Please ask a completely different question about ${role} role.`;
+        const retryQuestionData = await interviewService.generateQuestion(role, apiDifficulty, specificContext);
+        const retryQuestion = retryQuestionData.question || `Let's explore a different aspect of ${role} work. What challenges have you faced in your career?`;
+        
+        setCurrentQuestion(retryQuestion);
+        setMessages(prev => [...prev, { sender: 'ai', text: retryQuestion }]);
+        scrollToBottom(200); // Scroll after retry question is added
+      } else {
+        setCurrentQuestion(question);
+        setMessages(prev => [...prev, { sender: 'ai', text: question }]);
+        scrollToBottom(200); // Scroll after question is added
+      }
     } catch (error) {
-      dismissToast(endingToast);
-      console.error("Failed to end session properly:", error);
-      
-      // Fallback to basic ending
-      setSessionStarted(false);
-      setMessages([]);
-      setCurrentQuestion('');
-      setInterviewSummary({
-        role: selectedRole,
-        difficulty: difficulty,
-        apiDifficulty: mapDifficulty(difficulty),
-        questions: questionAnswers,
-        error: "Failed to generate AI summary. Manual review of answers below."
-      });
-      setQuestionAnswers([]);
-      setCurrentSession(null);
-      setShowConfetti(true);
-      
-      showSuccessToast('Interview completed! Please review your answers below.');
-      setTimeout(() => setShowConfetti(false), 6000);
+      console.error('Failed to generate question:', error);
+      showErrorToast('Failed to generate question. Please try again.');
+      const questionNumber = messages.filter(m => m.sender === 'ai').length + 1;
+      const fallbackQuestion = `Question ${questionNumber}: Tell me about a challenging ${role} project you've worked on recently.`;
+      setCurrentQuestion(fallbackQuestion);
+      setMessages(prev => [...prev, { sender: 'ai', text: fallbackQuestion }]);
+      scrollToBottom(200); // Scroll after fallback question is added
+    } finally {
+      setIsGeneratingQuestion(false);
     }
   };
-  
-  return (
-    <div className="container-responsive section-spacing">
-      {showConfetti && <ConfettiEffect duration={5000} />}
+
+  const handleAnswer = async (answer) => {
+    if (!answer.trim() || !currentQuestion) return;
+    
+    // Add user answer to chat (initially without score)
+    const userMessageIndex = messages.length + 1;
+    setMessages(prev => [...prev, { sender: 'user', text: answer, isEvaluating: true }]);
+    scrollToBottom(150); // Scroll after user answer is added
+    setIsLoading(true);
+    
+    try {
+      // Evaluate the answer
+      let evaluation = null;
+      try {
+        evaluation = await interviewService.evaluateAnswer(currentQuestion, answer, selectedRole);
+        console.log('Answer evaluation:', evaluation);
+      } catch (evalError) {
+        console.error('Failed to evaluate answer:', evalError);
+        // Continue without evaluation if it fails
+      }
       
-      {interviewSummary ? (
-        <InterviewSummary 
-          summary={interviewSummary}
-          onReset={() => {
-            setInterviewSummary(null);
-            setSelectedRole('');
-          }}
-        />
-      ) : !sessionStarted ? (
-        <div className="animate-fadeIn">
-          {/* Header Section */}
-          <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-forest/10 dark:bg-sage/10 rounded-full mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-10 sm:w-10 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-light-text dark:text-dark-text mb-4">
-              <span className="gradient-text">PrepMate</span> Interview Coach
-            </h1>
-            <p className="text-light-text/70 dark:text-dark-text/70 max-w-2xl mx-auto text-sm sm:text-base mb-8">
-              Practice technical interviews with our AI coach. Receive personalized feedback and improve your interview skills with realistic questions.
-            </p>
-            
-            {/* Feature highlights */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
-              <div className="card p-4 sm:p-6 bg-forest/5 dark:bg-sage/5 border-l-4 border-l-forest dark:border-l-sage card-interactive">
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 mr-3 bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-forest dark:text-sage">Realistic Questions</h3>
-                </div>
-                <p className="text-sm text-light-text/70 dark:text-dark-text/70">Role-specific questions tailored to your experience level and industry standards</p>
-              </div>
-              
-              <div className="card p-4 sm:p-6 bg-forest/5 dark:bg-sage/5 border-l-4 border-l-forest dark:border-l-sage card-interactive">
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 mr-3 bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-forest dark:text-sage">Expert Feedback</h3>
-                </div>
-                <p className="text-sm text-light-text/70 dark:text-dark-text/70">Get scored and receive detailed response evaluations with improvement suggestions</p>
-              </div>
-              
-              <div className="card p-4 sm:p-6 bg-forest/5 dark:bg-sage/5 border-l-4 border-l-forest dark:border-l-sage card-interactive">
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 mr-3 bg-forest/10 dark:bg-sage/10 text-forest dark:text-sage rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-forest dark:text-sage">Skill Improvement</h3>
-                </div>
-                <p className="text-sm text-light-text/70 dark:text-dark-text/70">Learn from mistakes and build confidence with each practice session</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Role Selection */}
-          <div className="card card-elevated mb-8">
-            <div className="p-4 sm:p-6 lg:p-8">
-              <RoleSelector 
-                onRoleSelect={handleRoleSelect}
-                selectedRole={selectedRole}
-                onDifficultySelect={handleDifficultySelect}
-                selectedDifficulty={difficulty}
-              />
-            </div>
-          </div>
-          
-          {/* Start Button */}
-          <div className="text-center">
-            <Button
-              onClick={startInterview}
-              disabled={!selectedRole}
-              loading={isLoading}
-              variant="primary"
-              size="xl"
-              className="w-full sm:w-auto shadow-lg hover:shadow-xl"
-              loadingText="Starting Interview..."
-              leftIcon={
-                !isLoading && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                )
-              }
-            >
-              Start Your Interview
-            </Button>
-            
-            <p className="mt-4 text-sm text-light-text/60 dark:text-dark-text/60">
-              {selectedRole 
-                ? `Ready to practice ${selectedRole} interview - ${difficulty} level` 
-                : 'Select a role and difficulty to begin your interview'
-              }
-            </p>
-          </div>
+      // Update the user message with evaluation results
+      setMessages(prev => prev.map((msg, index) => 
+        index === userMessageIndex - 1 ? { 
+          ...msg, 
+          isEvaluating: false, 
+          evaluation: evaluation 
+        } : msg
+      ));
+      scrollToBottom(100); // Scroll after evaluation is updated
+      
+      // Save answer to session
+      await interviewService.addQuestionAnswer(currentSession.id, currentQuestion, answer, evaluation);
+      
+      // Generate next question
+      await generateQuestion();
+    } catch (error) {
+      console.error('Failed to process answer:', error);
+      showErrorToast('Failed to process your answer');
+      
+      // Remove evaluation loading state on error
+      setMessages(prev => prev.map((msg, index) => 
+        index === userMessageIndex - 1 ? { 
+          ...msg, 
+          isEvaluating: false 
+        } : msg
+      ));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const endInterview = async () => {
+    if (!currentSession) return;
+    
+    setIsEndingInterview(true);
+    try {
+      const result = await interviewService.endSession(currentSession.id);
+      setSummary(result.summary);
+      setPhase('completed');
+      setShowConfetti(true);
+      showSuccessToast('Interview completed!');
+    } catch (error) {
+      console.error('Failed to end interview:', error);
+      showErrorToast('Failed to end interview');
+    } finally {
+      setIsEndingInterview(false);
+    }
+  };
+
+  const resetInterview = () => {
+    setPhase('setup');
+    setSelectedRole('');
+    setDifficulty('intermediate');
+    setCurrentSession(null);
+    setMessages([]);
+    setCurrentQuestion('');
+    setSummary(null);
+    setShowConfetti(false);
+    navigate('/interview');
+  };
+
+  // Render different phases
+  if (phase === 'completed') {
+    return (
+      <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+        {showConfetti && <ConfettiEffect />}
+        <div className="container-responsive section-spacing">
+          <InterviewSummary summary={summary} onReset={resetInterview} />
         </div>
-      ) : (
-        <div className="animate-fadeIn h-[calc(100vh-120px)] sm:h-[calc(100vh-140px)] flex flex-col">
-          {/* Interview Header */}
-          <div className="card mb-4 sm:mb-6 flex-shrink-0">
-            <div className="bg-forest dark:bg-forest/90 text-white p-4 sm:p-6 rounded-t-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center mb-4 sm:mb-0">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-medium">{selectedRole} Interview</h2>
-                    <p className="text-white/80 text-sm">{difficulty} level • {questionAnswers.length} questions completed</p>
-                  </div>
-                </div>
+      </div>
+    );
+  }
+
+  if (phase === 'setup') {
+    return (
+      <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+        <div className="container-responsive py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-light-text dark:text-dark-text mb-2">
+                Start Your <span className="gradient-text">Interview</span>
+              </h1>
+              <p className="text-light-text/70 dark:text-dark-text/70 text-sm">
+                Choose your role and difficulty level to begin your practice session
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-dark-muted rounded-xl border border-light-border dark:border-dark-border shadow-sm">
+              <RoleSelector
+                selectedRole={selectedRole}
+                onRoleSelect={setSelectedRole}
+                difficulty={difficulty}
+                onDifficultySelect={setDifficulty}
+              />
+              
+              <div className="px-4 pb-4 text-center border-t border-light-border dark:border-dark-border pt-4">
                 <Button
-                  onClick={handleEndInterview}
-                  variant="ghost"
-                  size="sm"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/50"
-                  leftIcon={
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  }
+                  onClick={startNewSession}
+                  disabled={!selectedRole || isLoading}
+                  className="px-8 py-3 text-base font-medium bg-gradient-to-r from-forest to-forest/90 hover:from-forest/90 hover:to-forest text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  End Interview
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Starting Interview...
+                    </div>
+                  ) : (
+                    'Start Interview'
+                  )}
                 </Button>
               </div>
             </div>
           </div>
-          
-          {/* Chat Container */}
-          <div className="card flex-1 flex flex-col min-h-0">
-            <div 
-              ref={chatContainerRef}
-              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-light-bg/30 dark:bg-dark-bg/30"
-            >
-              {messages.map((message, index) => (
-                <div 
-                  key={index} 
-                  className={`chat-message ${message.sender === 'ai' ? 'chat-message-ai' : 'chat-message-user'}`}
+        </div>
+      </div>
+    );
+  }
+
+  // Interview phase
+  const questionCount = messages.filter(m => m.sender === 'ai').length;
+  const answerCount = messages.filter(m => m.sender === 'user').length;
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5 flex flex-col">
+      {/* Fixed Header */}
+      <div className="sticky top-16 z-40 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md border-b border-forest/10 dark:border-sage/20 shadow-sm">
+        <div className="container-responsive py-3">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-forest to-forest/80 dark:from-sage dark:to-sage/80 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-xl font-bold text-light-text dark:text-dark-text">
+                    {selectedRole} Interview
+                  </h1>
+                  <div className="flex items-center space-x-3 text-xs text-light-text/60 dark:text-dark-text/60">
+                    <span className="flex items-center">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                        difficulty === 'beginner' ? 'bg-green-500' :
+                        difficulty === 'intermediate' ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}></span>
+                      {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+                    </span>
+                    <span>•</span>
+                    <span>Question {questionCount}</span>
+                    <span>•</span>
+                    <span>{answerCount} answered</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="hidden sm:flex items-center space-x-2 text-xs text-light-text/60 dark:text-dark-text/60">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Live Session</span>
+                </div>
+                <Button
+                  onClick={endInterview}
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoading || isEndingInterview}
+                  className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 text-xs px-3 py-1"
                 >
-                  {message.sender === 'ai' && (
-                    <div className="flex items-center mb-3">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-forest dark:bg-sage/80 text-white flex items-center justify-center mr-2 flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-medium text-forest dark:text-sage">AI Interviewer</span>
+                  {isEndingInterview ? 'Ending...' : 'End Interview'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        <div className="container-responsive flex-1 flex flex-col">
+          <div className="max-w-5xl mx-auto flex-1 flex flex-col py-4">
+            
+            {/* Chat Messages Area */}
+            <div className="flex-1 overflow-hidden">
+              <div 
+                ref={chatContainerRef}
+                className="h-full overflow-y-auto px-4 py-8 space-y-8"
+              >
+                {messages.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 bg-gradient-to-br from-forest to-sage rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
                     </div>
-                  )}
-                  
-                  <div>
-                    {/* Question Text */}
-                    <div className={`${message.sender === 'ai' ? 'text-light-text dark:text-dark-text' : 'text-white'} leading-relaxed text-sm sm:text-base`}>
-                      {message.text}
-                    </div>
-                    
-                    {/* Feedback Section */}
-                    {message.feedback && (
-                      <div className="mt-4 p-4 feedback-section rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center">
-                            <div className="w-5 h-5 rounded-full bg-olive dark:bg-sage text-white flex items-center justify-center mr-2">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            <span className="text-sm font-semibold text-olive dark:text-sage">Feedback</span>
+                    <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-2">
+                      Interview Starting Soon
+                    </h3>
+                    <p className="text-light-text/60 dark:text-dark-text/60">
+                      Your AI interviewer is preparing the first question...
+                    </p>
+                  </div>
+                )}
+                
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`w-full ${index > 0 ? 'mt-8' : ''}`}
+                  >
+                    {message.sender === 'user' ? (
+                      // User Answer - Right Side
+                      <div className="flex justify-end">
+                        <div className="flex items-start space-x-4 max-w-4xl flex-row-reverse space-x-reverse">
+                          {/* User Avatar */}
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-forest to-forest/80 dark:from-sage dark:to-sage/80">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
                           </div>
-                          {message.score && (
-                            <div className="px-3 py-1 bg-olive/20 dark:bg-sage/20 rounded-full text-sm font-bold text-olive dark:text-sage">
-                              {message.score}/10
+                          
+                          {/* User Message */}
+                          <div className="text-right">
+                            <div className="inline-block px-5 py-4 rounded-2xl shadow-md max-w-3xl bg-gradient-to-r from-forest to-forest/90 dark:from-sage dark:to-sage/90 text-white">
+                              <p className="text-base leading-relaxed whitespace-pre-wrap text-left">
+                                {message.text}
+                              </p>
                             </div>
-                          )}
+                            
+                            {/* Evaluation Score */}
+                            <div className="mt-2 text-right">
+                              {message.isEvaluating ? (
+                                <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs">
+                                  <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  <span className="text-gray-600 dark:text-gray-300">Evaluating...</span>
+                                </div>
+                              ) : message.evaluation ? (
+                                <div className="inline-flex items-center space-x-2">
+                                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                    message.evaluation.score >= 8 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                    message.evaluation.score >= 6 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                                    message.evaluation.score >= 4 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
+                                    'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                  }`}>
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                                    </svg>
+                                    Score: {message.evaluation.score}/10
+                                  </div>
+                                  {message.evaluation.feedback && (
+                                    <div className="text-xs text-light-text/60 dark:text-dark-text/60 max-w-xs truncate">
+                                      {message.evaluation.feedback}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-light-text/40 dark:text-dark-text/40">
+                                  You
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-light-text/90 dark:text-dark-text/90 italic leading-relaxed">
-                          {message.feedback}
-                        </p>
+                      </div>
+                    ) : (
+                      // AI Question - Left Side
+                      <div className="flex justify-start">
+                        <div className="flex items-start space-x-4 max-w-4xl">
+                          {/* AI Avatar */}
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+                            <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          
+                          {/* AI Message */}
+                          <div className="text-left">
+                            <div className="inline-block px-5 py-4 rounded-2xl shadow-md max-w-3xl bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 text-light-text dark:text-dark-text">
+                              <p className="text-base leading-relaxed whitespace-pre-wrap">
+                                {message.text}
+                              </p>
+                            </div>
+                            <div className="text-xs text-light-text/40 dark:text-dark-text/40 mt-2 text-left">
+                              AI Interviewer
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                  
-                  {message.sender === 'user' && (
-                    <div className="flex items-center justify-end mt-3">
-                      <span className="text-xs font-medium text-white/80 mr-2">You</span>
-                      <div className="w-6 h-6 rounded-full bg-white text-forest flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                ))}
+                
+                {isGeneratingQuestion && (
+                  <div className="flex justify-start mt-8">
+                    <div className="flex items-start space-x-4 max-w-4xl">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                       </div>
+                      <div className="bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 px-5 py-4 rounded-2xl shadow-md">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <span className="text-base text-light-text/70 dark:text-dark-text/70">
+                            Generating your next question...
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex items-center ml-4 mt-4">
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-forest dark:bg-sage/80 text-white flex items-center justify-center mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                    </svg>
                   </div>
-                  <span className="text-sm text-forest dark:text-sage mr-3">
-                    {isEvaluatingAnswer ? 'Evaluating your answer...' : 'AI is thinking...'}
-                  </span>
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-            
-            {/* Chat Input */}
-            <div className="border-t border-light-border dark:border-dark-border">
-              <ChatInterface 
-                onSendMessage={handleSendMessage} 
-                isLoading={isLoading}
-              />
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Input Area */}
+      <div className="sticky bottom-0 z-40 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-xl border-t border-forest/10 dark:border-sage/20 shadow-lg">
+        <div className="container-responsive py-4">
+          <div className="max-w-5xl mx-auto">
+            <ChatInterface
+              onSendMessage={handleAnswer}
+              disabled={isLoading || isGeneratingQuestion || !currentQuestion || isEndingInterview}
+              placeholder={
+                isEndingInterview
+                  ? "Ending interview session..."
+                  : isGeneratingQuestion 
+                    ? "Please wait for the next question..."
+                    : currentQuestion 
+                      ? "Type your answer here..."
+                      : "Preparing interview..."
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Elegant End Interview Loader */}
+      {isEndingInterview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
+          <div className="bg-white/95 dark:bg-dark-bg/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 mx-4 max-w-sm w-full border border-white/20 dark:border-white/10">
+            <div className="text-center">
+              {/* Elegant Spinner */}
+              <div className="relative mb-6">
+                <div className="w-12 h-12 mx-auto">
+                  <div className="absolute inset-0 rounded-full border-2 border-forest/30 dark:border-sage/30"></div>
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-forest dark:border-t-sage animate-spin"></div>
+                </div>
+              </div>
+
+              {/* Simple Text */}
+              <h3 className="text-lg font-medium text-light-text dark:text-dark-text mb-2">
+                Generating Summary
+              </h3>
+              <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+                Analyzing your responses...
+              </p>
             </div>
           </div>
         </div>

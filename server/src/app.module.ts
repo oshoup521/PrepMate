@@ -11,6 +11,7 @@ import { User } from './users/entities/user.entity';
 import { InterviewSession } from './interview/entities/interview-session.entity';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
 import { CustomLoggerService } from './common/services/logger.service';
+import { EmailService } from './common/services/email.service';
 import { CustomCacheModule } from './cache/cache.module';
 
 @Module({
@@ -46,7 +47,7 @@ import { CustomCacheModule } from './cache/cache.module';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SecurityMiddleware, CustomLoggerService],
+  providers: [AppService, SecurityMiddleware, CustomLoggerService, EmailService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

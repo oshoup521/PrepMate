@@ -14,7 +14,7 @@ const Dashboard = () => {
     completedSessions: 0,
     activeSessions: 0,
     inProgressSessions: 0,
-    averageScore: 0
+    averageScore: null
   });
   const [isStartingInterview, setIsStartingInterview] = useState(false);
   const { currentUser } = useContext(AuthContext);
@@ -41,7 +41,7 @@ const Dashboard = () => {
         completedSessions: Number(progressData?.completedSessions) || 0,
         activeSessions: Number(progressData?.activeSessions) || 0,
         inProgressSessions: Number(progressData?.inProgressSessions) || 0,
-        averageScore: Number(progressData?.averageScore) || 0
+        averageScore: progressData?.averageScore !== null && progressData?.averageScore !== undefined ? Number(progressData.averageScore) : null
       };
       
       setProgressStats(safeProgressStats);
@@ -56,7 +56,7 @@ const Dashboard = () => {
         completedSessions: 0,
         activeSessions: 0,
         inProgressSessions: 0,
-        averageScore: 0
+        averageScore: null
       });
     } finally {
       setLoading(false);
@@ -163,15 +163,7 @@ const Dashboard = () => {
 
   return (
     <div className="container-responsive section-spacing">
-      {/* Debug Info - Remove in production */}
-      {import.meta.env.DEV && (
-        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm">
-          <strong>🔧 Debug Info:</strong><br/>
-          API URL: {import.meta.env.VITE_API_URL || 'http://localhost:3000'}<br/>
-          User ID: {currentUser?.id}<br/>
-          User Agent: {navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}
-        </div>
-      )}
+
 
       {/* Welcome Header */}
       <div className="mb-8 sm:mb-12">
@@ -245,7 +237,7 @@ const Dashboard = () => {
         <div className="card progress-card">
           <div className="progress-stat">
             <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(progressStats.averageScore)}`}>
-              {progressStats.averageScore > 0 ? `${progressStats.averageScore}/10` : 'N/A'}
+              {progressStats.averageScore !== null && progressStats.averageScore !== undefined ? `${progressStats.averageScore}/10` : 'N/A'}
             </div>
             <div className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
               Average Score

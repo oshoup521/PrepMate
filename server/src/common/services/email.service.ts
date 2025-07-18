@@ -18,6 +18,7 @@ export interface EmailOptions {
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter;
+  private testAccountCredentials: { user: string; pass: string } | null = null;
 
   constructor(private configService: ConfigService) {
     this.createTransporter();
@@ -46,6 +47,10 @@ export class EmailService {
   private async createTestAccount() {
     try {
       const testAccount = await nodemailer.createTestAccount();
+      this.testAccountCredentials = {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      };
       this.transporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
         port: 587,
@@ -56,7 +61,9 @@ export class EmailService {
         },
       });
       this.logger.log(`Test email account created: ${testAccount.user}`);
+      this.logger.log(`Test email password: ${testAccount.pass}`);
       this.logger.log(`Preview emails at: https://ethereal.email`);
+      this.logger.log(`Login with: ${testAccount.user} / ${testAccount.pass}`);
     } catch (error) {
       this.logger.error('Failed to create test email account', error);
     }
@@ -160,5 +167,13 @@ export class EmailService {
         supportEmail: this.configService.get('SUPPORT_EMAIL', 'support@prepmate.com'),
       },
     });
+  }
+
+  getTestAccountCredentials(): { user: string; pass: string } | null {
+    return this.testAccountCredentials;
+  }
+
+  isUsingTestAccount(): boolean {
+    return this.testAccountCredentials !== null;
   }
 }
