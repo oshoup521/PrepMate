@@ -110,8 +110,14 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      
-      callback(new Error('Not allowed by CORS'));
+
+      // Allow any *.onrender.com or *.vercel.app origin (covers preview/deploy URLs)
+      if (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+
+      // Reject without throwing — avoids AllExceptionsFilter treating it as a 500
+      return callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
