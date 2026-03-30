@@ -40,6 +40,25 @@ export class InterviewService {
     'QA Engineer',
   ];
 
+  private readonly ROLE_ALIAS_MAP: Record<string, string> = {
+    'software-engineer': 'Software Engineer',
+    'frontend-developer': 'Frontend Developer',
+    'backend-developer': 'Backend Developer',
+    'full-stack-developer': 'Full Stack Developer',
+    'fullstack-developer': 'Full Stack Developer',
+    'data-scientist': 'Data Scientist',
+    'devops-engineer': 'DevOps Engineer',
+    'product-manager': 'Product Manager',
+    'ux-designer': 'UX Designer',
+    'qa-engineer': 'QA Engineer',
+  };
+
+  private normalizeRole(role: string): string {
+    if (!role) return role;
+    const trimmed = role.trim();
+    return this.ROLE_ALIAS_MAP[trimmed.toLowerCase()] ?? trimmed;
+  }
+
   private validateRole(role: string): void {
     if (!role || typeof role !== 'string' || role.trim().length === 0) {
       throw new Error('Role is required and must be a non-empty string');
@@ -101,7 +120,8 @@ export class InterviewService {
     throw new Error('All retry attempts failed');
   }async generateQuestion(role: string, difficulty: string = 'medium', context?: string): Promise<any> {
     try {
-      // Validate inputs
+      // Normalize and validate inputs
+      role = this.normalizeRole(role);
       this.validateRole(role);
       this.validateDifficulty(difficulty);
 
@@ -203,7 +223,8 @@ export class InterviewService {
     }
   }  async evaluateAnswer(question: string, answer: string, role: string): Promise<any> {
     try {
-      // Validate inputs
+      // Normalize and validate inputs
+      role = this.normalizeRole(role);
       this.validateRole(role);
       if (!question || typeof question !== 'string' || question.trim().length === 0) {
         throw new Error('Question is required and must be a non-empty string');
@@ -295,7 +316,8 @@ export class InterviewService {
     description?: string
   ): Promise<InterviewSession> {
     try {
-      // Validate inputs
+      // Normalize and validate inputs
+      jobRole = this.normalizeRole(jobRole);
       this.validateUserId(userId);
       this.validateRole(jobRole);
       this.validateDifficulty(difficulty);
