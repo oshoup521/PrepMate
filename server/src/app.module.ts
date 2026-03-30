@@ -35,12 +35,22 @@ import { CustomCacheModule } from './cache/cache.module';
         ttl: 60000,
         limit: 100,
       },
-    ]),    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'prepmate.sqlite',
-      entities: [User, InterviewSession],
-      synchronize: process.env.NODE_ENV !== 'production',
-    }),
+    ]),    TypeOrmModule.forRoot(
+      process.env.DATABASE_URL
+        ? {
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            entities: [User, InterviewSession],
+            synchronize: true,
+            ssl: { rejectUnauthorized: false },
+          }
+        : {
+            type: 'sqlite',
+            database: 'prepmate.sqlite',
+            entities: [User, InterviewSession],
+            synchronize: true,
+          },
+    ),
     CustomCacheModule,
     InterviewModule,
     UsersModule,
