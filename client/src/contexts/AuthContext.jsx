@@ -42,9 +42,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
   const login = async (email, password) => {
     try {
-      
-      
-      
       const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password,
@@ -52,9 +49,6 @@ export const AuthProvider = ({ children }) => {
 
       const { access_token, user } = response.data;
 
-      
-
-      
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
       
@@ -69,14 +63,11 @@ export const AuthProvider = ({ children }) => {
   };
   const register = async (name, email, password) => {
     try {
-  
       const response = await axios.post(`${API_URL}/auth/register`, {
         name,
         email,
         password,
       });
-
-
 
       // Check if the server returns user and token (auto login) or just a message (verification required)
       if (response.data.access_token && response.data.user) {

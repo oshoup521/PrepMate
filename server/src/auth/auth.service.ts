@@ -56,7 +56,7 @@ export class AuthService {
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
     // For development environment, create user with email already verified
-    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const isDevelopment = process.env.NODE_ENV === 'development';
     
     const user = await this.usersService.create(
       email, 

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -13,7 +15,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/forgot-password', {
+      const response = await axios.post(`${API_URL}/auth/forgot-password`, {
         email
       });
       

@@ -18,22 +18,33 @@ export class InterviewService {
     private interviewSessionRepository: Repository<InterviewSession>,
     private cacheService: CacheService,
   ) {    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-      if (!apiKey) {
-      this.logger.warn('GEMINI_API_KEY not found in environment variables');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is required but not set in environment variables');
     }
-    this.genAI = new GoogleGenerativeAI(apiKey || 'YOUR_API_KEY');
+    this.genAI = new GoogleGenerativeAI(apiKey);
     
     // Use model from environment variable or fallback to gemini-1.5-pro
     const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-pro';
     this.model = this.genAI.getGenerativeModel({ model: modelName });
   }
 
+  private readonly VALID_ROLES = [
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'Data Scientist',
+    'DevOps Engineer',
+    'Product Manager',
+    'UX Designer',
+    'QA Engineer',
+  ];
+
   private validateRole(role: string): void {
     if (!role || typeof role !== 'string' || role.trim().length === 0) {
       throw new Error('Role is required and must be a non-empty string');
     }
-    if (role.length > 100) {
-      throw new Error('Role must be less than 100 characters');
+    if (!this.VALID_ROLES.includes(role)) {
+      throw new Error(`Role must be one of: ${this.VALID_ROLES.join(', ')}`);
     }
   }
 

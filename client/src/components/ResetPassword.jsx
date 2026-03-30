@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -35,7 +37,7 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/reset-password', {
+      const response = await axios.post(`${API_URL}/auth/reset-password`, {
         token,
         password
       });

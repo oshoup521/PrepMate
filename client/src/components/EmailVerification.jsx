@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const EmailVerification = () => {
   const [searchParams] = useSearchParams();
@@ -22,7 +24,7 @@ const EmailVerification = () => {
 
   const verifyEmail = async (verificationToken) => {
     try {
-      const response = await axios.post('/api/auth/verify-email', {
+      const response = await axios.post(`${API_URL}/auth/verify-email`, {
         token: verificationToken
       });
       
@@ -46,7 +48,7 @@ const EmailVerification = () => {
 
     setIsResending(true);
     try {
-      const response = await axios.post('/api/auth/resend-verification', {
+      const response = await axios.post(`${API_URL}/auth/resend-verification`, {
         email
       });
       

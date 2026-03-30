@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -6,6 +6,8 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -38,25 +40,13 @@ export class UsersService {
 
   async findById(id: string): Promise<User | null> {
     try {
-      console.log(`🔍 Looking up user by ID: ${id}`);
       const user = await this.usersRepository.findOne({ where: { id } });
-      
-      if (user) {
-        console.log(`✅ User found: ${user.email} (ID: ${user.id})`);
-      } else {
-        console.log(`❌ User not found for ID: ${id}`);
-        
-        // Log all users for debugging (remove in production)
-        if (process.env.NODE_ENV !== 'production') {
-          const allUsers = await this.usersRepository.find();
-          console.log(`📊 Total users in database: ${allUsers.length}`);
-          console.log('👥 All user IDs:', allUsers.map(u => ({ id: u.id, email: u.email })));
-        }
+      if (!user) {
+        this.logger.debug(`User not found for ID: ${id}`);
       }
-      
       return user;
     } catch (error) {
-      console.error(`❌ Error finding user by ID ${id}:`, error);
+      this.logger.error(`Error finding user by ID: ${error.message}`);
       return null;
     }
   }

@@ -39,7 +39,7 @@ import { CustomCacheModule } from './cache/cache.module';
       type: 'sqlite',
       database: 'prepmate.sqlite',
       entities: [User, InterviewSession],
-      synchronize: true, // Don't use in production
+      synchronize: process.env.NODE_ENV !== 'production',
     }),
     CustomCacheModule,
     InterviewModule,

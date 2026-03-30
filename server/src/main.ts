@@ -59,8 +59,6 @@ async function bootstrap() {
       'JWT-auth'
     )
     .addServer('http://localhost:3000', 'Development server')
-    .addServer('https://crack-leading-feline.ngrok-free.app', 'Ngrok tunnel')
-    .addServer('https://your-production-domain.com', 'Production server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -103,14 +101,14 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // Allow ngrok domains
-      if (origin.includes('.ngrok.io') || origin.includes('.ngrok-free.app')) {
-        return callback(null, true);
-      }
-      
-      // Allow localhost with any port
-      if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
-        return callback(null, true);
+      // Allow ngrok and localhost only in non-production
+      if (process.env.NODE_ENV !== 'production') {
+        if (origin.includes('.ngrok.io') || origin.includes('.ngrok-free.app')) {
+          return callback(null, true);
+        }
+        if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
+          return callback(null, true);
+        }
       }
       
       callback(new Error('Not allowed by CORS'));
