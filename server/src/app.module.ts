@@ -37,15 +37,22 @@ import { CustomCacheModule } from './cache/cache.module';
       },
     ]),    TypeOrmModule.forRoot(
       process.env.DATABASE_URL
-        ? {
-            type: 'postgres',
-            url: process.env.DATABASE_URL,
-            entities: [User, InterviewSession],
-            synchronize: true,
-            ssl: { rejectUnauthorized: false },
-          }
+        ? (() => {
+            const dbUrl = new URL(process.env.DATABASE_URL);
+            return {
+              type: 'postgres' as const,
+              host: dbUrl.hostname,
+              port: parseInt(dbUrl.port, 10) || 5432,
+              username: decodeURIComponent(dbUrl.username),
+              password: decodeURIComponent(dbUrl.password),
+              database: dbUrl.pathname.replace(/^\//, ''),
+              entities: [User, InterviewSession],
+              synchronize: true,
+              ssl: { rejectUnauthorized: false },
+            };
+          })()
         : {
-            type: 'sqlite',
+            type: 'sqlite' as const,
             database: 'prepmate.sqlite',
             entities: [User, InterviewSession],
             synchronize: true,
