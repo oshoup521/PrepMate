@@ -112,10 +112,10 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
           {roles.map((role) => (
             <button
               key={role.id}
-              onClick={() => onRoleSelect(role.id)}
+              onClick={() => onRoleSelect(role.title)}
               className={`
                 p-4 rounded-lg border-2 transition-all duration-200 text-left
-                ${selectedRole === role.id 
+                ${selectedRole === role.title 
                   ? `${role.borderColor} ${role.bgColor} shadow-lg ring-2 ring-offset-2 ring-forest/20 dark:ring-sage/20` 
                   : 'border-light-border dark:border-dark-border hover:border-forest/40 dark:hover:border-sage/40 hover:shadow-md'
                 }
@@ -125,7 +125,7 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
               <div className="flex items-center space-x-3">
                 <div className="text-2xl">{role.icon}</div>
                 <div className="flex-1 min-w-0">
-                  <h4 className={`font-medium text-sm ${selectedRole === role.id ? role.textColor : 'text-light-text dark:text-dark-text'}`}>
+                  <h4 className={`font-medium text-sm ${selectedRole === role.title ? role.textColor : 'text-light-text dark:text-dark-text'}`}>
                     {role.title}
                   </h4>
                   <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1 truncate">

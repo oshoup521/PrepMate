@@ -29,6 +29,7 @@ export class InterviewService {
   }
 
   private readonly VALID_ROLES = [
+    'Software Engineer',
     'Frontend Developer',
     'Backend Developer',
     'Full Stack Developer',
