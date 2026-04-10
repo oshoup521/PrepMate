@@ -175,7 +175,7 @@ const Profile = () => {
         </div>
 
         {/* ── Two-column grid on desktop ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:items-start">
 
           {/* ══ LEFT COLUMN: identity + security ══ */}
           <div className="lg:col-span-1 space-y-5">
@@ -306,11 +306,11 @@ const Profile = () => {
           <div className="lg:col-span-2">
             {isPro ? (
               /* ── Pro subscription card ── */
-              <div className="relative bg-forest rounded-2xl overflow-hidden shadow-xl shadow-forest/20 h-full">
+              <div className="relative bg-forest rounded-2xl overflow-hidden shadow-xl shadow-forest/20">
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full pointer-events-none" />
                 <div className="absolute -bottom-20 -left-20 w-52 h-52 bg-white/5 rounded-full pointer-events-none" />
 
-                <div className="relative p-6 sm:p-8 flex flex-col h-full">
+                <div className="relative p-6 sm:p-8 flex flex-col">
                   {/* Header row */}
                   <div className="flex items-start justify-between mb-6">
                     <div>
@@ -393,7 +393,7 @@ const Profile = () => {
               </div>
             ) : (
               /* ── Free plan card ── */
-              <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
+              <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl overflow-hidden shadow-sm flex flex-col">
                 {/* Top band */}
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-b border-amber-100 dark:border-amber-800/40 px-6 py-4 flex items-center justify-between gap-4">
                   <div>

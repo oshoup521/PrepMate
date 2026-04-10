@@ -450,18 +450,12 @@ Then: [improvement areas, 1-3 sentences]`;
         throw new Error('Description must be less than 500 characters');
       }
 
-      // Plan gating: expire pro plan if needed, then enforce free limit
+      // Plan gating: enforce free limit (expiry is handled globally by SubscriptionCheckInterceptor)
       const user = await this.usersService.findById(userId);
-      if (user) {
-        if (user.plan === 'pro' && user.planExpiresAt && user.planExpiresAt < new Date()) {
-          await this.usersService.expirePlan(userId);
-        }
-        const freshUser = await this.usersService.findById(userId);
-        if (freshUser?.plan === 'free') {
-          const sessionCount = await this.interviewSessionRepository.count({ where: { userId } });
-          if (sessionCount >= 5) {
-            throw new ForbiddenException('Free plan limit reached. Upgrade to Pro for unlimited sessions.');
-          }
+      if (user && user.plan === 'free') {
+        const sessionCount = await this.interviewSessionRepository.count({ where: { userId } });
+        if (sessionCount >= 5) {
+          throw new ForbiddenException('Free plan limit reached. Upgrade to Pro for unlimited sessions.');
         }
       }
 

@@ -1,4 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -14,6 +15,7 @@ import { CustomLoggerService } from './common/services/logger.service';
 import { EmailService } from './common/services/email.service';
 import { CustomCacheModule } from './cache/cache.module';
 import { PaymentModule } from './payment/payment.module';
+import { SubscriptionCheckInterceptor } from './common/interceptors/subscription-check.interceptor';
 
 function parseDbUrl(rawUrl: string) {
   // Strip protocol
@@ -79,7 +81,16 @@ function parseDbUrl(rawUrl: string) {
     PaymentModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SecurityMiddleware, CustomLoggerService, EmailService],
+  providers: [
+    AppService,
+    SecurityMiddleware,
+    CustomLoggerService,
+    EmailService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SubscriptionCheckInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
