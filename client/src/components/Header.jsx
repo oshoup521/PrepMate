@@ -67,11 +67,6 @@ const Header = () => {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     )},
-    { path: '/profile', label: 'Profile', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    )}
   ];
 
   return (
@@ -114,21 +109,32 @@ const Header = () => {
             {currentUser ? (
               <>
                 {/* User Info - Desktop */}
-                <div className="hidden lg:flex items-center space-x-3">
+                <Link
+                  to="/profile"
+                  className={`hidden lg:flex items-center space-x-3 px-2 py-1 rounded-lg hover:bg-forest/5 dark:hover:bg-sage/5 transition-colors ${isActive('/profile') ? 'bg-forest/5 dark:bg-sage/5' : ''}`}
+                  title="View profile"
+                >
                   <div className="text-right">
-                    <p className="text-sm font-medium text-light-text dark:text-dark-text">
-                      {currentUser.name}
-                    </p>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <p className="text-sm font-medium text-light-text dark:text-dark-text">
+                        {currentUser.name}
+                      </p>
+                      {currentUser.plan === 'pro' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white leading-none tracking-wide">
+                          PRO
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-light-text/60 dark:text-dark-text/60">
                       {currentUser.email}
                     </p>
                   </div>
-                  <div className="w-8 h-8 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                  <div className={`relative w-8 h-8 bg-forest dark:bg-sage rounded-full flex items-center justify-center ring-2 ring-transparent transition-all ${isActive('/profile') ? 'ring-forest dark:ring-sage' : 'group-hover:ring-forest'}`}>
                     <span className="text-sm font-medium text-white">
                       {currentUser.name?.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                </div>
+                </Link>
 
                 {/* Logout Button - Desktop */}
                 <Button
@@ -144,6 +150,17 @@ const Header = () => {
                 >
                   Logout
                 </Button>
+
+                {/* Mobile Avatar - links to profile */}
+                <Link
+                  to="/profile"
+                  className={`lg:hidden relative w-8 h-8 bg-forest dark:bg-sage rounded-full flex items-center justify-center ring-2 ring-transparent hover:ring-forest dark:hover:ring-sage transition-all ${isActive('/profile') ? 'ring-forest dark:ring-sage' : ''}`}
+                  title="View profile"
+                >
+                  <span className="text-sm font-medium text-white">
+                    {currentUser.name?.charAt(0).toUpperCase()}
+                  </span>
+                </Link>
 
                 {/* Mobile Menu Button */}
                 <IconButton
@@ -227,21 +244,39 @@ const Header = () => {
           {/* Scrollable Content */}
           <div className="flex-1 flex flex-col min-h-0">
             {/* User Info - Mobile */}
-            <div className="flex items-center space-x-3 mb-4 p-3 bg-forest/5 dark:bg-sage/5 rounded-lg flex-shrink-0">
-              <div className="w-10 h-10 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+            <Link
+              to="/profile"
+              onClick={closeMenu}
+              className="flex items-center space-x-3 mb-4 p-3 bg-forest/5 dark:bg-sage/5 rounded-lg flex-shrink-0 hover:bg-forest/10 dark:hover:bg-sage/10 transition-colors"
+            >
+              <div className="w-10 h-10 bg-forest dark:bg-sage rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-base font-medium text-white">
                   {currentUser.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-light-text dark:text-dark-text truncate">
-                  {currentUser.name}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium text-light-text dark:text-dark-text truncate">
+                    {currentUser.name}
+                  </p>
+                  {currentUser.plan === 'pro' ? (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white leading-none tracking-wide flex-shrink-0">
+                      PRO
+                    </span>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.preventDefault(); closeMenu(); navigate('/upgrade'); }}
+                      className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-forest/40 text-forest dark:text-sage leading-none tracking-wide flex-shrink-0 hover:bg-forest/10 transition-colors"
+                    >
+                      Free
+                    </button>
+                  )}
+                </div>
                 <p className="text-sm text-light-text/60 dark:text-dark-text/60 truncate">
                   {currentUser.email}
                 </p>
               </div>
-            </div>
+            </Link>
 
             {/* Navigation Links - Mobile */}
             <nav className="space-y-1 flex-1">

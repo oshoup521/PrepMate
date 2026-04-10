@@ -1,388 +1,140 @@
-# Stripe Payment Integration — PrepMate
+# Stripe Integration Plan — PrepMate
 
-**Stack:** NestJS + TypeORM + PostgreSQL + React (Vite)
+**For:** International users (USD)
+**Plans:** Monthly $4.99 · Annual $53.99 (~$4.50/month, 10% off)
 
-> Use Stripe if you plan to target international users (USD/EUR). For India-only, prefer Razorpay.
-
----
-
-## 1. Account Setup
-
-1. Sign up at [stripe.com](https://stripe.com)
-2. No KYC needed to start — you can test immediately
-3. For payouts, complete identity verification in the dashboard
-4. Go to **Dashboard → Developers → API Keys**
-5. Save your `Publishable Key` and `Secret Key`
+> Implement Razorpay first. Mirror the same phases here once Razorpay is stable.
 
 ---
 
-## 2. Environment Variables
+## Phase 1 — Basic Monthly Subscription
 
-### server/.env
-```env
-STRIPE_SECRET_KEY=your_stripe_secret_key_here
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
-```
+Goal: an international user can pay $4.99/month and get upgraded to Pro.
 
-### client/.env
-```env
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
-```
+### Account & Config
+- [ ] Sign up at stripe.com — no KYC needed to test immediately
+- [ ] Get API keys from Dashboard → Developers → API Keys
+- [ ] Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to `server/.env`
+- [ ] Add `VITE_STRIPE_PUBLISHABLE_KEY` to `client/.env`
+- [ ] Create a **Product** in Stripe Dashboard: "PrepMate Pro"
+- [ ] Create a **Price** under that product: $4.99/month recurring
 
-> Never expose `STRIPE_SECRET_KEY` on the frontend.
+### Database
+- [ ] Add `plan` column to User entity — `'free' | 'pro'`, default `'free'` (shared with Razorpay)
+- [ ] Add `planExpiresAt` — timestamp, nullable
+- [ ] Add `stripeCustomerId` — text, nullable
+- [ ] Add `stripeSubscriptionId` — text, nullable
+- [ ] Run migration (skip if already done for Razorpay)
 
----
+### Backend
+- [ ] Install `stripe` npm package on the server
+- [ ] Install `@stripe/stripe-js` and `@stripe/react-stripe-js` on the client
+- [ ] Generate payment module (or add to existing one)
+- [ ] `POST /payment/stripe/create-checkout-session` — creates a Stripe Checkout Session with the monthly price ID, redirects user to Stripe-hosted page
+- [ ] `POST /payment/stripe/webhook` — handles Stripe events (no JWT guard — Stripe signs this itself)
+  - `checkout.session.completed` → set `plan = 'pro'`, `planExpiresAt = now + 30 days`, save `stripeCustomerId` and `stripeSubscriptionId`
+  - `customer.subscription.deleted` → reset `plan = 'free'`, clear `planExpiresAt`
+- [ ] Enable `rawBody: true` in `main.ts` — Stripe webhook verification requires the raw request body
 
-## 3. Install Dependencies
+### Plan Gating
+- [ ] Same logic as Razorpay — check plan and expiry before allowing a session (can be shared)
 
-```bash
-# server
-cd server
-npm install stripe
+### Frontend
+- [ ] "Upgrade to Pro" button — calls `create-checkout-session`, redirects to Stripe's hosted checkout page
+- [ ] After payment, Stripe redirects back to your `success_url` (e.g. `/dashboard?payment=success`)
+- [ ] Read `payment=success` query param on dashboard to show a success toast
 
-# client
-cd client
-npm install @stripe/stripe-js @stripe/react-stripe-js
-```
+### Webhook Local Testing
+- [ ] Install Stripe CLI
+- [ ] Run `stripe listen --forward-to localhost:3000/payment/stripe/webhook`
+- [ ] Copy the temporary webhook secret into `.env` as `STRIPE_WEBHOOK_SECRET`
 
----
-
-## 4. Database Changes
-
-Add these columns to the `user` entity:
-
-### server/src/users/entities/user.entity.ts
-
-```ts
-@Column({ default: 'free' })
-plan: string; // 'free' | 'pro'
-
-@Column({ type: 'timestamp', nullable: true })
-planExpiresAt: Date | null;
-
-@Column({ type: 'text', nullable: true })
-stripeCustomerId: string | null;
-
-@Column({ type: 'text', nullable: true })
-stripeSubscriptionId: string | null;
-```
+### Test
+- [ ] Use test card `4242 4242 4242 4242` / any future expiry / any CVV
+- [ ] Confirm redirect back to dashboard after payment
+- [ ] Confirm `plan`, `planExpiresAt`, `stripeCustomerId`, `stripeSubscriptionId` update in DB
+- [ ] Simulate `customer.subscription.deleted` via Stripe CLI — confirm user is downgraded
 
 ---
 
-## 5. Backend — Payment Module
+## Phase 2 — Add Annual Plan
 
-### 5.1 Create the module
+Goal: user can choose between monthly ($4.99) and annual ($53.99).
 
-```bash
-cd server
-nest generate module payment
-nest generate controller payment
-nest generate service payment
-```
+### Stripe Dashboard Setup
+- [ ] Create a second **Price** under the same "PrepMate Pro" product: $53.99/year recurring
+- [ ] Note both price IDs — monthly price ID and annual price ID
 
-### 5.2 server/src/payment/payment.service.ts
+### Database
+- [ ] Add `billingCycle` column to User entity — `'monthly' | 'annual'`, default `'monthly'`
+- [ ] Run migration (skip if already done for Razorpay phase)
 
-```ts
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import Stripe from 'stripe';
-import { User } from '../users/entities/user.entity';
+### Backend
+- [ ] Update `create-checkout-session` to accept `plan: 'monthly' | 'annual'` in the request body
+- [ ] Use the matching Stripe price ID based on the selected plan
+- [ ] Update webhook handler: set `planExpiresAt = now + 30 days` for monthly, `now + 365 days` for annual
+- [ ] Store `billingCycle` on user after successful webhook
 
-@Injectable()
-export class PaymentService {
-  private stripe: Stripe;
+### Frontend
+- [ ] Add plan toggle — Monthly vs Annual with prices
+- [ ] Show annual saving: *"Save ~$6 — 10% off"*
+- [ ] Pass selected plan to `create-checkout-session` request
 
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-    private configService: ConfigService,
-  ) {
-    this.stripe = new Stripe(this.configService.get('STRIPE_SECRET_KEY'), {
-      apiVersion: '2024-12-18.acacia',
-    });
-  }
-
-  async createCheckoutSession(userId: string, userEmail: string) {
-    const session = await this.stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'subscription',
-      customer_email: userEmail,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: { name: 'PrepMate Pro' },
-            unit_amount: 999, // $9.99 in cents
-            recurring: { interval: 'month' },
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: { userId },
-      success_url: `${this.configService.get('CLIENT_URL')}/dashboard?payment=success`,
-      cancel_url: `${this.configService.get('CLIENT_URL')}/dashboard?payment=cancelled`,
-    });
-
-    return { sessionUrl: session.url };
-  }
-
-  async handleWebhook(rawBody: Buffer, signature: string) {
-    const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
-    let event: Stripe.Event;
-
-    try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    } catch {
-      throw new BadRequestException('Invalid webhook signature');
-    }
-
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata.userId;
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      await this.usersRepository.update(userId, {
-        plan: 'pro',
-        planExpiresAt: expiresAt,
-        stripeCustomerId: session.customer as string,
-        stripeSubscriptionId: session.subscription as string,
-      });
-    }
-
-    if (event.type === 'customer.subscription.deleted') {
-      const subscription = event.data.object as Stripe.Subscription;
-      await this.usersRepository.update(
-        { stripeSubscriptionId: subscription.id },
-        { plan: 'free', planExpiresAt: null },
-      );
-    }
-
-    return { received: true };
-  }
-
-  async cancelSubscription(userId: string) {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-
-    if (!user.stripeSubscriptionId) {
-      throw new BadRequestException('No active subscription found');
-    }
-
-    await this.stripe.subscriptions.cancel(user.stripeSubscriptionId);
-    await this.usersRepository.update(userId, {
-      plan: 'free',
-      planExpiresAt: null,
-      stripeSubscriptionId: null,
-    });
-
-    return { success: true, message: 'Subscription cancelled' };
-  }
-}
-```
-
-### 5.3 server/src/payment/payment.controller.ts
-
-```ts
-import {
-  Controller, Post, Body, Req, UseGuards, Headers, RawBodyRequest,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { PaymentService } from './payment.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-@Controller('payment')
-export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
-
-  @Post('create-checkout-session')
-  @UseGuards(JwtAuthGuard)
-  createCheckoutSession(@Req() req) {
-    return this.paymentService.createCheckoutSession(req.user.id, req.user.email);
-  }
-
-  @Post('cancel')
-  @UseGuards(JwtAuthGuard)
-  cancelSubscription(@Req() req) {
-    return this.paymentService.cancelSubscription(req.user.id);
-  }
-
-  // Webhook — NO JWT guard, Stripe signs this itself
-  @Post('webhook')
-  handleWebhook(
-    @Req() req: RawBodyRequest<Request>,
-    @Headers('stripe-signature') signature: string,
-  ) {
-    return this.paymentService.handleWebhook(req.rawBody, signature);
-  }
-}
-```
-
-### 5.4 Enable rawBody in main.ts
-
-Stripe webhook verification requires the raw request body:
-
-```ts
-// server/src/main.ts
-const app = await NestFactory.create(AppModule, { rawBody: true });
-```
-
-### 5.5 server/src/payment/payment.module.ts
-
-```ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PaymentService } from './payment.service';
-import { PaymentController } from './payment.controller';
-import { User } from '../users/entities/user.entity';
-
-@Module({
-  imports: [TypeOrmModule.forFeature([User])],
-  controllers: [PaymentController],
-  providers: [PaymentService],
-})
-export class PaymentModule {}
-```
-
-Register in `app.module.ts`:
-```ts
-imports: [..., PaymentModule],
-```
+### Test
+- [ ] Checkout with monthly — confirm expiry ~30 days, `billingCycle = 'monthly'`
+- [ ] Checkout with annual — confirm expiry ~365 days, `billingCycle = 'annual'`
 
 ---
 
-## 6. Gate Free Users on the Backend
+## Phase 3 — Coupon System
 
-In your interview session service, add a plan check:
+Goal: admin can create coupon codes in Stripe, users apply them at checkout.
 
-```ts
-const user = await this.usersRepository.findOne({ where: { id: userId } });
+> Stripe has a native coupon system — no custom DB entity needed unlike Razorpay.
 
-// Expire pro plan if past date
-if (user.plan === 'pro' && user.planExpiresAt && user.planExpiresAt < new Date()) {
-  await this.usersRepository.update(userId, { plan: 'free' });
-  user.plan = 'free';
-}
+### Stripe Dashboard Setup
+- [ ] Go to Dashboard → Product Catalog → Coupons → Create coupon
+- [ ] Create your launch coupons (e.g. `WELCOME20` — 20% off, `ANNUAL10` — 10% off annual)
+- [ ] For each coupon, also create a **Promotion Code** — this is the user-facing code (e.g. `WELCOME20`)
 
-const FREE_SESSION_LIMIT = 5;
+### Backend
+- [ ] Two options — pick one:
+  - **Option A (simpler):** Add `allow_promotion_codes: true` to the Checkout Session — Stripe shows a promo code field on their hosted page, no backend coupon validation needed
+  - **Option B (custom):** Accept `couponCode` in `create-checkout-session`, look up the Stripe coupon via API, and attach `discounts: [{ coupon: id }]` to the session
+- [ ] Option A is recommended for v1 — Stripe handles validation, display, and tracking automatically
 
-if (user.plan === 'free') {
-  const sessionCount = await this.sessionRepository.count({ where: { userId } });
-  if (sessionCount >= FREE_SESSION_LIMIT) {
-    throw new ForbiddenException('Free plan limit reached. Upgrade to Pro.');
-  }
-}
-```
+### Frontend (Option A)
+- [ ] No changes needed — Stripe's hosted checkout page shows the promo code field automatically
+- [ ] Optionally add a note on the upgrade screen: *"Have a coupon? Enter it on the next page"*
 
----
+### Frontend (Option B — if custom)
+- [ ] Add coupon input field before redirecting to Stripe
+- [ ] Validate on backend, show discount preview, then redirect
 
-## 7. Frontend — Checkout Button
-
-### client/src/components/UpgradeToPro.jsx
-
-```jsx
-import axios from 'axios';
-
-export default function UpgradeToPro() {
-  const handleUpgrade = async () => {
-    try {
-      const { data } = await axios.post(
-        '/api/payment/create-checkout-session',
-        {},
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-
-      // Redirect to Stripe's hosted checkout page
-      window.location.href = data.sessionUrl;
-    } catch (err) {
-      alert('Something went wrong. Please try again.');
-    }
-  };
-
-  return (
-    <button onClick={handleUpgrade}>
-      Upgrade to Pro — $9.99/month
-    </button>
-  );
-}
-```
-
-After payment, Stripe redirects back to your `success_url`. Read the query param to show a success message:
-
-```jsx
-// In Dashboard.jsx
-const params = new URLSearchParams(window.location.search);
-if (params.get('payment') === 'success') {
-  toast.success('You are now on Pro!');
-}
-```
+### Test
+- [ ] Create a test coupon in Stripe Dashboard
+- [ ] Apply it during test checkout — confirm discounted amount is charged
+- [ ] Check coupon redemption count updates in Stripe Dashboard
 
 ---
 
-## 8. Webhook Setup (Important)
-
-Stripe sends events (payment success, subscription cancelled) to your backend via webhook.
-
-### Local testing with Stripe CLI:
-```bash
-# Install Stripe CLI, then:
-stripe listen --forward-to localhost:3000/payment/webhook
-```
-
-This gives you a temporary `STRIPE_WEBHOOK_SECRET` — paste it into your `.env`.
-
-### Production:
-1. Go to **Stripe Dashboard → Developers → Webhooks → Add Endpoint**
-2. URL: `https://your-backend.com/payment/webhook`
-3. Events to listen for:
-   - `checkout.session.completed`
-   - `customer.subscription.deleted`
-4. Copy the **Signing Secret** → paste as `STRIPE_WEBHOOK_SECRET` in your `.env`
-
----
-
-## 9. API Endpoints Summary
+## API Endpoints (Final)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/payment/create-checkout-session` | JWT | Redirects to Stripe checkout |
-| POST | `/payment/cancel` | JWT | Cancels active subscription |
-| POST | `/payment/webhook` | Stripe signature | Handles Stripe events |
+| POST | `/payment/stripe/create-checkout-session` | JWT | Redirects to Stripe hosted checkout — accepts `plan` |
+| POST | `/payment/stripe/webhook` | Stripe signature | Handles subscription events |
+| POST | `/payment/stripe/cancel` | JWT | Cancels active subscription |
 
 ---
 
-## 10. Testing (Test Mode)
+## Going Live Checklist
 
-Use these test card details on Stripe's checkout page:
-- **Card Number:** `4242 4242 4242 4242`
-- **Expiry:** Any future date (e.g., `12/34`)
-- **CVV:** Any 3 digits
-- **ZIP:** Any 5 digits
-
-To test a declined card: `4000 0000 0000 0002`
-
----
-
-## 11. Going Live Checklist
-
-- [ ] Identity verification completed on Stripe dashboard
-- [ ] Replace test keys with live keys in `.env`
-- [ ] Production webhook endpoint registered and `STRIPE_WEBHOOK_SECRET` updated
-- [ ] Backend deployed on HTTPS
-- [ ] Test a real $1 payment end to end
-- [ ] Handle `invoice.payment_failed` webhook for subscription renewal failures (optional)
-
----
-
-## Razorpay vs Stripe — Quick Comparison
-
-| | Razorpay | Stripe |
-|---|---|---|
-| Best for | India (INR) | International (USD/EUR) |
-| UPI support | Yes | No |
-| Setup difficulty | Easy | Moderate (webhooks required) |
-| KYC | Required for payouts | Required for payouts |
-| Transaction fee | ~2% | 2.9% + $0.30 |
-| Test mode | Instant | Instant |
+- [ ] Identity verification completed on Stripe dashboard (required for payouts)
+- [ ] Swap test keys for live keys in `.env`
+- [ ] Register production webhook endpoint: Dashboard → Developers → Webhooks → Add Endpoint
+  - URL: `https://your-backend.com/payment/stripe/webhook`
+  - Events: `checkout.session.completed`, `customer.subscription.deleted`, `invoice.payment_failed`
+- [ ] Copy production webhook signing secret to `.env`
+- [ ] Backend on HTTPS
+- [ ] End-to-end test with a real $1 payment

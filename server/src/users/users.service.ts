@@ -101,4 +101,30 @@ export class UsersService {
       passwordResetExpires: null,
     });
   }
+
+  async expirePlan(userId: string): Promise<void> {
+    await this.usersRepository.update(userId, { plan: 'free', planExpiresAt: null });
+  }
+
+  async upgradeToPro(
+    userId: string,
+    billingCycle: 'monthly' | 'annual',
+    razorpayPaymentId: string,
+    razorpayOrderId: string,
+  ): Promise<void> {
+    const now = new Date();
+    const planExpiresAt = new Date(now);
+    if (billingCycle === 'annual') {
+      planExpiresAt.setDate(planExpiresAt.getDate() + 365);
+    } else {
+      planExpiresAt.setDate(planExpiresAt.getDate() + 30);
+    }
+    await this.usersRepository.update(userId, {
+      plan: 'pro',
+      billingCycle,
+      planExpiresAt,
+      razorpayPaymentId,
+      razorpayOrderId,
+    });
+  }
 }

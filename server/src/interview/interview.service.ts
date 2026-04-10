@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { InterviewSession } from './entities/interview-session.entity';
 import { CacheService } from '../cache/cache.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class InterviewService {
@@ -17,6 +18,7 @@ export class InterviewService {
     @InjectRepository(InterviewSession)
     private interviewSessionRepository: Repository<InterviewSession>,
     private cacheService: CacheService,
+    private usersService: UsersService,
   ) {    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is required but not set in environment variables');
@@ -448,6 +450,21 @@ Then: [improvement areas, 1-3 sentences]`;
         throw new Error('Description must be less than 500 characters');
       }
 
+      // Plan gating: expire pro plan if needed, then enforce free limit
+      const user = await this.usersService.findById(userId);
+      if (user) {
+        if (user.plan === 'pro' && user.planExpiresAt && user.planExpiresAt < new Date()) {
+          await this.usersService.expirePlan(userId);
+        }
+        const freshUser = await this.usersService.findById(userId);
+        if (freshUser?.plan === 'free') {
+          const sessionCount = await this.interviewSessionRepository.count({ where: { userId } });
+          if (sessionCount >= 5) {
+            throw new ForbiddenException('Free plan limit reached. Upgrade to Pro for unlimited sessions.');
+          }
+        }
+      }
+
       this.logger.debug(`Creating session for user: ${userId}, role: ${jobRole}, difficulty: ${difficulty}`);      const session = this.interviewSessionRepository.create({
         userId,
         role: jobRole,
@@ -472,6 +489,10 @@ Then: [improvement areas, 1-3 sentences]`;
       return savedSession;
     } catch (error) {
       this.logger.error('Error creating session:', error);
+      // Re-throw NestJS HTTP exceptions (e.g. ForbiddenException) directly
+      if (error?.status && error?.response) {
+        throw error;
+      }
       throw new Error(`Failed to create session: ${error.message}`);
     }
   }

@@ -13,6 +13,7 @@ import { SecurityMiddleware } from './common/middleware/security.middleware';
 import { CustomLoggerService } from './common/services/logger.service';
 import { EmailService } from './common/services/email.service';
 import { CustomCacheModule } from './cache/cache.module';
+import { PaymentModule } from './payment/payment.module';
 
 function parseDbUrl(rawUrl: string) {
   // Strip protocol
@@ -75,6 +76,7 @@ function parseDbUrl(rawUrl: string) {
     InterviewModule,
     UsersModule,
     AuthModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService, SecurityMiddleware, CustomLoggerService, EmailService],

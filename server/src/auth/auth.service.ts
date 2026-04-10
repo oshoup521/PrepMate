@@ -231,4 +231,11 @@ export class AuthService {
 
     return { message: 'Password changed successfully.' };
   }
+
+  async getProfile(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) return null;
+    const { password, emailVerificationToken, emailVerificationExpires, passwordResetToken, passwordResetExpires, ...profile } = user;
+    return profile;
+  }
 }

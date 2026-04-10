@@ -95,6 +95,19 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setCurrentUser(null);
   };
+
+  const refreshUser = async () => {
+    try {
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) return;
+      const response = await axios.get(`${API_URL}/auth/profile`);
+      const updatedUser = response.data;
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setCurrentUser(updatedUser);
+    } catch {
+      // silently fail — stale user data is acceptable
+    }
+  };
   // Set up axios interceptor to add auth token to all requests
   useEffect(() => {
     const requestInterceptor = axios.interceptors.request.use(
@@ -117,6 +130,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!currentUser,
   };
 

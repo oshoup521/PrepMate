@@ -186,6 +186,7 @@ const Dashboard = () => {
         </div>
       </div>
 
+
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8 sm:mb-12">
         <div className="card progress-card">

@@ -4,11 +4,13 @@ import { InterviewController } from './interview.controller';
 import { InterviewService } from './interview.service';
 import { ConfigModule } from '@nestjs/config';
 import { InterviewSession } from './entities/interview-session.entity';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([InterviewSession])
+    TypeOrmModule.forFeature([InterviewSession]),
+    UsersModule,
   ],
   controllers: [InterviewController],
   providers: [InterviewService],

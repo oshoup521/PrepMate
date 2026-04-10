@@ -135,6 +135,16 @@ export class AuthController {
     }
   }
 
+  @Get('profile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile returned' })
+  async getProfile(@Request() req) {
+    return this.authService.getProfile(req.user.id);
+  }
+
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)

@@ -1,329 +1,125 @@
-# Razorpay Payment Integration — PrepMate
+# Razorpay Integration Plan — PrepMate
 
-**Stack:** NestJS + TypeORM + PostgreSQL + React (Vite)
-
----
-
-## 1. Account Setup
-
-1. Sign up at [razorpay.com](https://razorpay.com)
-2. Complete KYC (PAN card + bank account) — takes 1–2 business days
-3. Until KYC, use **Test Mode** — it works fully with no real money
-4. Go to **Dashboard → Settings → API Keys → Generate Key**
-5. Save your `Key ID` and `Key Secret`
+**For:** Indian users (INR)
+**Plans:** Monthly ₹299 · Annual ₹3,229 (10% off)
 
 ---
 
-## 2. Environment Variables
+## Phase 1 — Basic Monthly Payment
 
-### server/.env
-```env
-RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxxxx
-RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
-```
+Goal: a user can pay ₹299 and get upgraded to Pro.
 
-### client/.env
-```env
-VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxxxx
-```
+### Account & Config
+- [ ] Sign up at razorpay.com, complete KYC (or use Test Mode until KYC clears)
+- [ ] Generate API keys from Dashboard → Settings → API Keys
+- [ ] Add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to `server/.env`
+- [ ] Add `VITE_RAZORPAY_KEY_ID` to `client/.env`
 
-> Never expose `KEY_SECRET` on the frontend.
+### Database
+- [ ] Add `plan` column to User entity — values: `'free' | 'pro'`, default `'free'`
+- [ ] Add `planExpiresAt` column — timestamp, nullable
+- [ ] Add `razorpayPaymentId` column — text, nullable
+- [ ] Add `razorpayOrderId` column — text, nullable
+- [ ] Run migration
 
----
+### Backend
+- [ ] Install `razorpay` npm package on the server
+- [ ] Generate payment module, service, controller with Nest CLI
+- [ ] `POST /payment/create-order` — creates a Razorpay order for ₹299 (29900 paise)
+- [ ] `POST /payment/verify` — verifies Razorpay signature using HMAC SHA256, sets `plan = 'pro'` and `planExpiresAt = now + 30 days`
+- [ ] Both endpoints protected by JWT guard
 
-## 3. Install Dependencies
+### Plan Gating
+- [ ] In the interview session service, check user's plan before allowing a new session
+- [ ] If `plan = 'free'` and session count >= 5, throw `ForbiddenException`
+- [ ] If `plan = 'pro'` and `planExpiresAt` is past, reset to `'free'` first
 
-```bash
-# server
-cd server
-npm install razorpay
+### Frontend
+- [ ] Load Razorpay checkout script dynamically (CDN, no npm package needed)
+- [ ] "Upgrade to Pro" button — calls `create-order`, opens Razorpay modal, on success calls `verify`
+- [ ] Show success message and refresh user state after verification
 
-# no frontend package needed — Razorpay uses a CDN script
-```
-
----
-
-## 4. Database Changes
-
-Add these columns to the `user` entity:
-
-### server/src/users/entities/user.entity.ts
-
-```ts
-@Column({ default: 'free' })
-plan: string; // 'free' | 'pro'
-
-@Column({ type: 'timestamp', nullable: true })
-planExpiresAt: Date | null;
-
-@Column({ type: 'text', nullable: true })
-razorpayPaymentId: string | null;
-
-@Column({ type: 'text', nullable: true })
-razorpayOrderId: string | null;
-```
+### Test
+- [ ] Use test card `4111 1111 1111 1111` / any expiry / CVV `999` / OTP `1234`
+- [ ] Confirm `plan` and `planExpiresAt` update correctly in the DB
+- [ ] Confirm free user hitting session limit gets the right error
 
 ---
 
-## 5. Backend — Payment Module
+## Phase 2 — Add Annual Plan
 
-### 5.1 Create the module
+Goal: user can choose between monthly (₹299) and annual (₹3,229).
 
-```bash
-cd server
-nest generate module payment
-nest generate controller payment
-nest generate service payment
-```
+### Database
+- [ ] Add `billingCycle` column to User entity — values: `'monthly' | 'annual'`, default `'monthly'`
+- [ ] Run migration
 
-### 5.2 server/src/payment/payment.service.ts
+### Backend
+- [ ] Update `create-order` to accept `plan: 'monthly' | 'annual'` in the request body
+- [ ] Monthly amount: 29900 paise · Annual amount: 322900 paise
+- [ ] Update `verify` to set `planExpiresAt = now + 30 days` for monthly, `now + 365 days` for annual
+- [ ] Store `billingCycle` on the user after successful payment
 
-```ts
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
-import Razorpay from 'razorpay';
-import { User } from '../users/entities/user.entity';
+### Frontend
+- [ ] Add plan toggle on the upgrade screen — Monthly vs Annual
+- [ ] Show annual saving: *"Save ₹359 — 10% off"*
+- [ ] Pass selected plan to `create-order` request
 
-@Injectable()
-export class PaymentService {
-  private razorpay: Razorpay;
-
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-    private configService: ConfigService,
-  ) {
-    this.razorpay = new Razorpay({
-      key_id: this.configService.get('RAZORPAY_KEY_ID'),
-      key_secret: this.configService.get('RAZORPAY_KEY_SECRET'),
-    });
-  }
-
-  async createOrder(userId: string) {
-    const amount = 49900; // amount in paise (₹499)
-    const options = {
-      amount,
-      currency: 'INR',
-      receipt: `receipt_${userId}_${Date.now()}`,
-    };
-
-    const order = await this.razorpay.orders.create(options);
-    return { orderId: order.id, amount: order.amount, currency: order.currency };
-  }
-
-  async verifyPayment(
-    userId: string,
-    razorpay_order_id: string,
-    razorpay_payment_id: string,
-    razorpay_signature: string,
-  ) {
-    const keySecret = this.configService.get('RAZORPAY_KEY_SECRET');
-    const body = razorpay_order_id + '|' + razorpay_payment_id;
-
-    const expectedSignature = crypto
-      .createHmac('sha256', keySecret)
-      .update(body)
-      .digest('hex');
-
-    if (expectedSignature !== razorpay_signature) {
-      throw new BadRequestException('Invalid payment signature');
-    }
-
-    // Upgrade user to pro (30 days)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    await this.usersRepository.update(userId, {
-      plan: 'pro',
-      planExpiresAt: expiresAt,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpayOrderId: razorpay_order_id,
-    });
-
-    return { success: true, message: 'Plan upgraded to Pro' };
-  }
-}
-```
-
-### 5.3 server/src/payment/payment.controller.ts
-
-```ts
-import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
-import { PaymentService } from './payment.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-
-@Controller('payment')
-@UseGuards(JwtAuthGuard)
-export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
-
-  @Post('create-order')
-  createOrder(@Req() req) {
-    return this.paymentService.createOrder(req.user.id);
-  }
-
-  @Post('verify')
-  verifyPayment(
-    @Req() req,
-    @Body()
-    body: {
-      razorpay_order_id: string;
-      razorpay_payment_id: string;
-      razorpay_signature: string;
-    },
-  ) {
-    return this.paymentService.verifyPayment(
-      req.user.id,
-      body.razorpay_order_id,
-      body.razorpay_payment_id,
-      body.razorpay_signature,
-    );
-  }
-}
-```
-
-### 5.4 server/src/payment/payment.module.ts
-
-```ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PaymentService } from './payment.service';
-import { PaymentController } from './payment.controller';
-import { User } from '../users/entities/user.entity';
-
-@Module({
-  imports: [TypeOrmModule.forFeature([User])],
-  controllers: [PaymentController],
-  providers: [PaymentService],
-})
-export class PaymentModule {}
-```
-
-Register it in `app.module.ts`:
-```ts
-imports: [..., PaymentModule],
-```
+### Test
+- [ ] Pay for monthly — confirm expiry is ~30 days from now
+- [ ] Pay for annual — confirm expiry is ~365 days from now
+- [ ] Confirm `billingCycle` stores correctly
 
 ---
 
-## 6. Gate Free Users on the Backend
+## Phase 3 — Coupon System
 
-In your interview session service, check the plan before allowing a new session:
+Goal: admin can create coupon codes, users can apply them at checkout for a discount.
 
-```ts
-// Example check inside your interview service
-const user = await this.usersRepository.findOne({ where: { id: userId } });
+### Database
+- [ ] Create `Coupon` entity with fields: `code`, `type` (percent/fixed), `discountValue`, `appliesTo` (monthly/annual/all), `maxUses` (nullable), `isOneTimePerUser`, `usesCount`, `validFrom`, `validUntil`, `isActive`
+- [ ] Create `UserCouponUsage` entity with fields: `userId`, `couponId`, `usedAt` — tracks which users have used one-time coupons
+- [ ] Run migration
 
-// Check if pro plan has expired
-if (user.plan === 'pro' && user.planExpiresAt && user.planExpiresAt < new Date()) {
-  await this.usersRepository.update(userId, { plan: 'free' });
-  user.plan = 'free';
-}
+### Backend
+- [ ] `GET /payment/validate-coupon?code=X&plan=Y` — validates the coupon and returns the discounted amount (does not apply it yet, just previews)
+  - Checks: active, not expired, usage limit not hit, plan match, not already used by this user (if `isOneTimePerUser`)
+- [ ] Update `create-order` to accept optional `couponCode` — validate coupon, apply discount to order amount before calling `razorpay.orders.create()`
+- [ ] Update `verify` to increment `coupon.usesCount` and insert a `UserCouponUsage` row after successful payment
+- [ ] Coupon validation logic must run on the backend — never trust a discounted amount from the frontend
 
-const FREE_SESSION_LIMIT = 5;
+### Coupon Creation (No Admin UI in v1)
+- [ ] Create coupon records directly in the DB or via a seed script
+- [ ] Example coupons to seed: `WELCOME20` (20% off, one-time per user), `ANNUAL10` (10% off annual only), `FLAT100` (₹100 off monthly)
 
-if (user.plan === 'free') {
-  const sessionCount = await this.sessionRepository.count({ where: { userId } });
-  if (sessionCount >= FREE_SESSION_LIMIT) {
-    throw new ForbiddenException('Free plan limit reached. Upgrade to Pro.');
-  }
-}
-```
+### Frontend
+- [ ] Add coupon code input field on the upgrade screen
+- [ ] "Apply" button calls `validate-coupon` and shows the new price if valid, or an error if not
+- [ ] Pass `couponCode` along with `plan` in the `create-order` request
 
----
-
-## 7. Frontend — Checkout Button
-
-### client/src/components/UpgradeToPro.jsx
-
-```jsx
-import axios from 'axios';
-
-const loadRazorpayScript = () =>
-  new Promise((resolve) => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-
-export default function UpgradeToPro() {
-  const handleUpgrade = async () => {
-    const loaded = await loadRazorpayScript();
-    if (!loaded) {
-      alert('Failed to load payment gateway. Check your internet connection.');
-      return;
-    }
-
-    // 1. Create order on backend
-    const { data } = await axios.post(
-      '/api/payment/create-order',
-      {},
-      { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-    );
-
-    // 2. Open Razorpay checkout
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: data.amount,
-      currency: data.currency,
-      name: 'PrepMate',
-      description: 'Pro Plan — 1 Month',
-      order_id: data.orderId,
-      handler: async (response) => {
-        // 3. Verify on backend
-        await axios.post('/api/payment/verify', response, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        alert('Upgraded to Pro! Refresh the page.');
-      },
-      prefill: { name: 'User', email: 'user@example.com' },
-      theme: { color: '#6366f1' },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-  };
-
-  return (
-    <button onClick={handleUpgrade}>
-      Upgrade to Pro — ₹499/month
-    </button>
-  );
-}
-```
+### Test
+- [ ] Seed a coupon, apply it at checkout, confirm the Razorpay order amount is the discounted value
+- [ ] Confirm `usesCount` increments in DB after payment
+- [ ] Try using a one-time coupon twice with the same user — should be rejected on second use
+- [ ] Try an expired / maxed-out coupon — should be rejected
 
 ---
 
-## 8. API Endpoints Summary
+## API Endpoints (Final)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/payment/create-order` | JWT | Creates a Razorpay order |
-| POST | `/payment/verify` | JWT | Verifies payment & upgrades plan |
+| POST | `/payment/create-order` | JWT | Creates order — accepts `plan` and optional `couponCode` |
+| POST | `/payment/verify` | JWT | Verifies signature, upgrades user, records coupon usage |
+| GET | `/payment/validate-coupon` | JWT | Previews discount for a coupon code + plan combo |
 
 ---
 
-## 9. Testing (Test Mode)
-
-Use these test card details:
-- **Card Number:** `4111 1111 1111 1111`
-- **Expiry:** Any future date
-- **CVV:** Any 3 digits
-- **OTP:** `1234` (on test bank page)
-
-For UPI: use `success@razorpay` as the UPI ID
-
----
-
-## 10. Going Live Checklist
+## Going Live Checklist
 
 - [ ] KYC completed on Razorpay dashboard
-- [ ] Replace test keys with live keys in `.env`
-- [ ] Backend deployed on HTTPS
-- [ ] Test a real ₹1 payment end to end
-- [ ] Add webhook (optional but recommended) for payment failure handling
+- [ ] Swap test keys for live keys in `.env`
+- [ ] Backend on HTTPS
+- [ ] Coupon seeds applied to production DB
+- [ ] End-to-end test with a real ₹1 payment
+- [ ] Webhook for `payment.failed` set up (needed for Phase 4 — grace period)

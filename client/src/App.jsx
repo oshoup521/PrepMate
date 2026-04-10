@@ -21,6 +21,7 @@ import EmailTestInfo from './components/EmailTestInfo';
 import TermsOfService from './components/TermsOfService';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import InstallPWA from './components/InstallPWA';
+import UpgradePro from './components/UpgradePro';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -94,6 +95,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/upgrade"
+                  element={
+                    <ProtectedRoute>
+                      <UpgradePro />
                     </ProtectedRoute>
                   }
                 />
