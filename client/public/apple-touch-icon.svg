@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <rect width="180" height="180" rx="36" fill="#537D5D"/>
+  <!-- Shield -->
+  <path d="M90 146s45-22.5 45-56.25V50.625L90 33.75 45 50.625v39.375c0 33.75 45 56.25 45 56.25z"
+        fill="rgba(255,255,255,0.15)" stroke="white" stroke-width="6.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Checkmark -->
+  <path d="M75 90l11.25 11.25 18.75-22.5"
+        fill="none" stroke="white" stroke-width="6.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

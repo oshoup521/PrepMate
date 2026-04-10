@@ -20,6 +20,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import EmailTestInfo from './components/EmailTestInfo';
 import TermsOfService from './components/TermsOfService';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import InstallPWA from './components/InstallPWA';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -129,6 +130,7 @@ function App() {
               }}
             />
             <EmailTestInfo />
+            <InstallPWA />
           </div>
         </Router>
       </AuthProvider>

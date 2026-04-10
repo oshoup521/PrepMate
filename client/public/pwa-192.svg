@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="40" fill="#537D5D"/>
+  <!-- Shield (scaled from 24x24 viewBox with scale=6, offset=24) -->
+  <path d="M96 156s48-24 48-60V54l-48-18-48 18v42c0 36 48 60 48 60z"
+        fill="rgba(255,255,255,0.15)" stroke="white" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Checkmark inside shield -->
+  <path d="M80 96l12 12 20-24"
+        fill="none" stroke="white" stroke-width="7"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -7,7 +7,9 @@
       "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(64\\).toString\\('hex'\\)\\)\")",
       "Bash(npm install:*)",
       "Bash(npx kill-port:*)",
-      "Bash(taskkill /F /IM node.exe /T)"
+      "Bash(taskkill /F /IM node.exe /T)",
+      "Bash(workbox)",
+      "Bash(manifest\")"
     ]
   }
 }
