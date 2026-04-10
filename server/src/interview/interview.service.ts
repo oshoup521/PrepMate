@@ -23,8 +23,10 @@ export class InterviewService {
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
     
-    // Use model from environment variable or fallback to gemini-1.5-pro
-    const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-1.5-pro';
+    const modelName = this.configService.get<string>('GEMINI_MODEL');
+    if (!modelName) {
+      throw new Error('GEMINI_MODEL is required but not set in environment variables');
+    }
     this.model = this.genAI.getGenerativeModel({ model: modelName });
   }
 
