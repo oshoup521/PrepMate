@@ -8,108 +8,76 @@ const InterviewSummary = ({ summary, onReset, questionTimings = [] }) => {
   const navigate = useNavigate();
   if (!summary) return null;
 
+  // Render inline markdown (bold, italic, code) within a single line of text
+  const renderInline = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const parts = text.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*|`[^`]+?`)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return <strong key={index} className="font-semibold text-light-text dark:text-dark-text">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+        return <em key={index} className="italic">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+        return <code key={index} className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 text-xs rounded font-mono text-blue-600 dark:text-blue-400">{part.slice(1, -1)}</code>;
+      }
+      return part;
+    });
+  };
+
   // Helper function to convert markdown-style text to JSX
   const renderMarkdownText = (text) => {
     if (!text || typeof text !== 'string') return text;
-    
-    // Process the text step by step to handle multiple markdown features
-    let processedText = text;
-    const elements = [];
-    let currentIndex = 0;
-    
-    // Split by various markdown patterns
-    const markdownPatterns = [
-      { pattern: /(\*\*[^*]+?\*\*)/g, type: 'bold' },
-      { pattern: /(\*[^*]+?\*)/g, type: 'italic' },
-      { pattern: /(`[^`]+?`)/g, type: 'code' },
-      { pattern: /(### [^\n]+)/g, type: 'header' },
-      { pattern: /(^- [^\n]+)/gm, type: 'bullet' },
-      { pattern: /(^> [^\n]+)/gm, type: 'quote' }
-    ];
-    
-    // Simple approach: handle bold, italic, and code inline
-    const parts = text.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*|`[^`]+?`|### [^\n]+|^- [^\n]+|^> [^\n]+)/gm);
-    
-    return parts.map((part, index) => {
-      // Bold text
-      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-        const boldText = part.slice(2, -2);
-        return (
-          <strong key={index} className="font-semibold text-light-text dark:text-dark-text">
-            {boldText}
-          </strong>
-        );
+
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      if (line.trim() === '') {
+        return <div key={i} className="h-1" />;
       }
-      
-      // Italic text
-      if (part.startsWith('*') && part.endsWith('*') && part.length > 2 && !part.startsWith('**')) {
-        const italicText = part.slice(1, -1);
+      if (line.startsWith('### ')) {
         return (
-          <em key={index} className="italic text-light-text dark:text-dark-text">
-            {italicText}
-          </em>
-        );
-      }
-      
-      // Code text
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-        const codeText = part.slice(1, -1);
-        return (
-          <code key={index} className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 text-xs rounded font-mono text-blue-600 dark:text-blue-400">
-            {codeText}
-          </code>
-        );
-      }
-      
-      // Header text
-      if (part.startsWith('### ')) {
-        const headerText = part.slice(4);
-        return (
-          <h3 key={index} className="text-lg font-bold text-light-text dark:text-dark-text mt-4 mb-2">
-            {headerText}
+          <h3 key={i} className="text-base font-bold text-light-text dark:text-dark-text mt-4 mb-1">
+            {renderInline(line.slice(4))}
           </h3>
         );
       }
-      
-      // Bullet points
-      if (part.startsWith('- ')) {
-        const bulletText = part.slice(2);
+      if (line.startsWith('## ')) {
         return (
-          <div key={index} className="flex items-start mt-2">
-            <span className="text-blue-500 mr-2 mt-1">•</span>
-            <span className="text-light-text/80 dark:text-dark-text/80">
-              {bulletText}
-            </span>
+          <h2 key={i} className="text-lg font-bold text-light-text dark:text-dark-text mt-4 mb-1">
+            {renderInline(line.slice(3))}
+          </h2>
+        );
+      }
+      // Sub-bullet (4 spaces or tab before -)
+      if (/^(\s{4}|\t)- /.test(line)) {
+        return (
+          <div key={i} className="flex items-start ml-5 mt-1">
+            <span className="text-blue-400 mr-2 flex-shrink-0 text-xs mt-1">◦</span>
+            <span className="text-light-text/80 dark:text-dark-text/80 text-sm">{renderInline(line.replace(/^(\s+- )/, ''))}</span>
           </div>
         );
       }
-      
-      // Quote text
-      if (part.startsWith('> ')) {
-        const quoteText = part.slice(2);
+      if (line.startsWith('- ')) {
         return (
-          <blockquote key={index} className="border-l-4 border-blue-500 pl-4 my-2 text-light-text/80 dark:text-dark-text/80 italic">
-            {quoteText}
+          <div key={i} className="flex items-start mt-2">
+            <span className="text-blue-500 mr-2 flex-shrink-0 mt-0.5">•</span>
+            <span className="text-light-text/80 dark:text-dark-text/80 text-sm">{renderInline(line.slice(2))}</span>
+          </div>
+        );
+      }
+      if (line.startsWith('> ')) {
+        return (
+          <blockquote key={i} className="border-l-4 border-blue-500 pl-4 my-2 text-light-text/80 dark:text-dark-text/80 italic text-sm">
+            {renderInline(line.slice(2))}
           </blockquote>
         );
       }
-      
-      // Regular text - handle line breaks
-      if (part.includes('\n')) {
-        return (
-          <span key={index}>
-            {part.split('\n').map((line, lineIndex) => (
-              <span key={lineIndex}>
-                {line}
-                {lineIndex < part.split('\n').length - 1 && <br />}
-              </span>
-            ))}
-          </span>
-        );
-      }
-      
-      // Return regular text
-      return <span key={index}>{part}</span>;
+      return (
+        <p key={i} className="text-light-text/80 dark:text-dark-text/80 text-sm mt-1">
+          {renderInline(line)}
+        </p>
+      );
     });
   };
 

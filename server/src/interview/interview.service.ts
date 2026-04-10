@@ -311,6 +311,126 @@ export class InterviewService {
       throw new Error(`Failed to evaluate answer: ${error.message}`);
     }
   }
+
+  async *generateQuestionStream(
+    role: string,
+    difficulty: string = 'medium',
+    context?: string,
+  ): AsyncGenerator<{ type: string; content?: string; data?: any }> {
+    role = this.normalizeRole(role);
+    this.validateRole(role);
+    this.validateDifficulty(difficulty);
+
+    const difficultyMap = {
+      easy: 'beginner-level',
+      medium: 'intermediate-level',
+      hard: 'advanced-level',
+    };
+    const actualDifficulty = difficultyMap[difficulty] || 'intermediate-level';
+    const contextPrompt = context ? `Context: ${context}\n` : '';
+    const uniquenessHint =
+      context && context.includes('Previous questions')
+        ? 'IMPORTANT: Avoid similar or duplicate questions. Create a unique question exploring different aspects of the role.\n'
+        : '';
+
+    const prompt = `Generate a ${actualDifficulty} interview question for a ${role} position.
+${contextPrompt}${uniquenessHint}Write the question as plain text only — no JSON, no markdown, no extra formatting.
+After the question text, on a new line write exactly "---" and then write the ideal answer context points.`;
+
+    try {
+      const result = await this.model.generateContentStream(prompt);
+      let accumulated = '';
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (!text) continue;
+        accumulated += text;
+        yield { type: 'token', content: text };
+      }
+
+      const sepMatch = accumulated.match(/\n---\s*\n/);
+      const question = sepMatch
+        ? accumulated.slice(0, sepMatch.index).trim()
+        : accumulated.trim();
+      const questionContext = sepMatch
+        ? accumulated.slice((sepMatch.index ?? 0) + sepMatch[0].length).trim()
+        : 'No structured context available';
+
+      yield {
+        type: 'done',
+        data: { question, context: questionContext, role, difficulty, timestamp: new Date().toISOString() },
+      };
+    } catch (error) {
+      this.logger.error('Error in question stream:', error);
+      yield { type: 'error', content: error.message };
+    }
+  }
+
+  async *evaluateAnswerStream(
+    question: string,
+    answer: string,
+    role: string,
+  ): AsyncGenerator<{ type: string; content?: string; data?: any }> {
+    role = this.normalizeRole(role);
+    this.validateRole(role);
+    if (!question?.trim()) throw new Error('Question is required');
+    if (!answer?.trim()) throw new Error('Answer is required');
+    if (answer.length > 5000) throw new Error('Answer must be less than 5000 characters');
+
+    const prompt = `You are an expert ${role} interviewer evaluating a candidate's answer.
+Question: "${question}"
+Candidate's answer: "${answer}"
+
+Evaluate on technical accuracy, completeness, and clarity. Follow this exact output format:
+Line 1: SCORE: [a single integer from 1 to 10]
+Lines 2 onwards: [your detailed feedback as plain prose, 2-4 sentences]
+Then a line with exactly "---"
+Then: [improvement areas, 1-3 sentences]`;
+
+    try {
+      const result = await this.model.generateContentStream(prompt);
+      let accumulated = '';
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (!text) continue;
+        accumulated += text;
+        yield { type: 'token', content: text };
+      }
+
+      const firstNewline = accumulated.indexOf('\n');
+      const scoreLine = firstNewline !== -1 ? accumulated.slice(0, firstNewline).trim() : accumulated.trim();
+      const scoreMatch = scoreLine.match(/^SCORE:\s*(\d+)/i);
+      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+
+      const sepMatch = accumulated.match(/\n---\s*\n/);
+      const afterScore = firstNewline !== -1 ? firstNewline + 1 : 0;
+      let feedback: string;
+      let improvement_areas: string;
+
+      if (sepMatch) {
+        feedback = accumulated.slice(afterScore, sepMatch.index).trim();
+        improvement_areas = accumulated.slice((sepMatch.index ?? 0) + sepMatch[0].length).trim();
+      } else {
+        feedback = accumulated.slice(afterScore).trim();
+        improvement_areas = 'No structured improvement areas available';
+      }
+
+      yield {
+        type: 'done',
+        data: {
+          score: score ?? 'N/A',
+          feedback: feedback || accumulated.trim(),
+          improvement_areas,
+          timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error in evaluation stream:', error);
+      yield { type: 'error', content: error.message };
+    }
+  }
+
   async createSession(
     userId: string, 
     jobRole: string, 

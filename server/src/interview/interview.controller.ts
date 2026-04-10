@@ -1,11 +1,11 @@
-import { 
-  Body, 
-  Controller, 
-  Post, 
-  UseGuards, 
-  Request, 
-  Get, 
-  Param, 
+import {
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Get,
+  Param,
   ParseUUIDPipe,
   NotFoundException,
   ForbiddenException,
@@ -13,7 +13,9 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { InterviewService } from './interview.service';
@@ -209,6 +211,70 @@ export class InterviewController {
         throw new NotFoundException('Session not found or no data available');
       }
       throw error;
+    }
+  }
+
+  @ApiOperation({ summary: 'Stream interview question generation (SSE)' })
+  @ApiBody({ type: GenerateQuestionDto })
+  @UseGuards(JwtAuthGuard)
+  @Post('generate-question/stream')
+  async generateQuestionStream(
+    @Request() req,
+    @Body() generateQuestionDto: GenerateQuestionDto,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    try {
+      const stream = this.interviewService.generateQuestionStream(
+        generateQuestionDto.jobRole,
+        generateQuestionDto.difficulty,
+        generateQuestionDto.context,
+      );
+      for await (const event of stream) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (error) {
+      this.logger.error(`Error in question stream: ${error.message}`);
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
+
+  @ApiOperation({ summary: 'Stream answer evaluation (SSE)' })
+  @ApiBody({ type: EvaluateAnswerDto })
+  @UseGuards(JwtAuthGuard)
+  @Post('evaluate-answer/stream')
+  async evaluateAnswerStream(
+    @Request() req,
+    @Body() evaluateAnswerDto: EvaluateAnswerDto,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    try {
+      const stream = this.interviewService.evaluateAnswerStream(
+        evaluateAnswerDto.question,
+        evaluateAnswerDto.answer,
+        evaluateAnswerDto.jobRole,
+      );
+      for await (const event of stream) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (error) {
+      this.logger.error(`Error in evaluation stream: ${error.message}`);
+      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
+    } finally {
+      res.end();
     }
   }
 

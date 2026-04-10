@@ -66,6 +66,71 @@ export const interviewService = {
     }
   },
 
+  // Streaming helpers — use native fetch so we can consume SSE chunks
+  _readSSEStream: async (response, onToken, onDone, onError) => {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? '';
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'token' && onToken) onToken(event.content);
+          else if (event.type === 'done' && onDone) onDone(event.data);
+          else if (event.type === 'error' && onError) onError(new Error(event.content));
+        } catch {
+          // ignore malformed SSE events
+        }
+      }
+    }
+  },
+
+  generateQuestionStream: async (jobRole, difficulty = 'medium', context = null, onToken, onDone, onError) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${API_URL}/interview/generate-question/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ jobRole, difficulty, context }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await interviewService._readSSEStream(response, onToken, onDone, onError);
+    } catch (error) {
+      if (onError) onError(error);
+      else throw error;
+    }
+  },
+
+  evaluateAnswerStream: async (question, answer, jobRole, onToken, onDone, onError) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${API_URL}/interview/evaluate-answer/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ question, answer, jobRole }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await interviewService._readSSEStream(response, onToken, onDone, onError);
+    } catch (error) {
+      if (onError) onError(error);
+      else throw error;
+    }
+  },
+
   // Authentication services
   login: async (email, password) => {
     try {

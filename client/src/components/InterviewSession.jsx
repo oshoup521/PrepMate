@@ -174,95 +174,152 @@ const InterviewSession = () => {
       console.error('No role selected for question generation');
       return;
     }
-    
+
     setIsGeneratingQuestion(true);
+
+    // Add a placeholder message that will be filled by streaming tokens
+    setMessages(prev => [...prev, { sender: 'ai', text: '', isStreaming: true }]);
+    scrollToBottom(200);
+
     try {
-      const apiDifficulty = difficulty === 'beginner' ? 'easy' : 
+      const apiDifficulty = difficulty === 'beginner' ? 'easy' :
                            difficulty === 'advanced' ? 'hard' : 'medium';
-      
-      // Create context from previous questions to avoid repetition
+
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
-      const context = previousQuestions.length > 0 
+      const context = previousQuestions.length > 0
         ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
         : undefined;
-      
-      const questionData = await interviewService.generateQuestion(selectedRole, apiDifficulty, context);
-      const question = questionData.question || "Tell me about your experience with this role.";
-      
-      // Check if this question was already asked
-      if (previousQuestions.includes(question)) {
-        // If it's a repeat, try again with more specific context
-        const specificContext = `Previous questions: ${previousQuestions.join('; ')}. This question was already asked: "${question}". Please ask a completely different question about ${selectedRole} role.`;
-        const retryQuestionData = await interviewService.generateQuestion(selectedRole, apiDifficulty, specificContext);
-        const retryQuestion = retryQuestionData.question || `Let's explore a different aspect of ${selectedRole} work. What challenges have you faced in your career?`;
-        
-        setCurrentQuestion(retryQuestion);
-        setMessages(prev => [...prev, { sender: 'ai', text: retryQuestion }]);
-      } else {
-        setCurrentQuestion(question);
-        setMessages(prev => [...prev, { sender: 'ai', text: question }]);
-        scrollToBottom(200); // Scroll after question is added
-      }
+
+      await interviewService.generateQuestionStream(
+        selectedRole,
+        apiDifficulty,
+        context,
+        (token) => {
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx < 0 || prev[lastIdx].sender !== 'ai') return prev;
+            const rawAccum = (prev[lastIdx]._raw || '') + token;
+            // Only display content before the "---" context separator
+            const displayText = rawAccum.split('\n---')[0];
+            return prev.map((m, i) =>
+              i === lastIdx ? { ...m, text: displayText, isStreaming: true, _raw: rawAccum } : m
+            );
+          });
+          scrollToBottom(50);
+        },
+        (data) => {
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx < 0 || prev[lastIdx].sender !== 'ai') return prev;
+            return prev.map((m, i) =>
+              i === lastIdx ? { sender: 'ai', text: data.question } : m
+            );
+          });
+          setCurrentQuestion(data.question);
+        },
+        (error) => {
+          console.error('Question stream error:', error);
+          const fallback = `Tell me about a challenging ${selectedRole} project you've worked on recently.`;
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx >= 0 && prev[lastIdx].isStreaming) {
+              return prev.map((m, i) => i === lastIdx ? { sender: 'ai', text: fallback } : m);
+            }
+            return [...prev, { sender: 'ai', text: fallback }];
+          });
+          setCurrentQuestion(fallback);
+        },
+      );
     } catch (error) {
       console.error('Failed to generate question:', error);
-      const questionNumber = messages.filter(m => m.sender === 'ai').length + 1;
+      const questionNumber = messages.filter(m => m.sender === 'ai').length;
       const fallbackQuestion = `Question ${questionNumber}: Tell me about a challenging ${selectedRole || 'role'} project you've worked on recently.`;
+      setMessages(prev => {
+        const lastIdx = prev.length - 1;
+        if (lastIdx >= 0 && prev[lastIdx].isStreaming) {
+          return prev.map((m, i) => i === lastIdx ? { sender: 'ai', text: fallbackQuestion } : m);
+        }
+        return [...prev, { sender: 'ai', text: fallbackQuestion }];
+      });
       setCurrentQuestion(fallbackQuestion);
-      setMessages(prev => [...prev, { sender: 'ai', text: fallbackQuestion }]);
-      scrollToBottom(200); // Scroll after fallback question is added
+      scrollToBottom(200);
     } finally {
       setIsGeneratingQuestion(false);
     }
   };
 
   const generateQuestionForSession = async (role, sessionDifficulty) => {
-    if (!role) {
-      console.error('No role provided for question generation');
+    if (!role || role.trim().length < 2) {
+      console.error('Invalid role for question generation:', role);
       return;
     }
-    
-    if (role.trim().length < 2) {
-      console.error('Role is too short for question generation:', role);
-      return;
-    }
-    
+
     setIsGeneratingQuestion(true);
+
+    setMessages(prev => [...prev, { sender: 'ai', text: '', isStreaming: true }]);
+    scrollToBottom(200);
+
     try {
       const apiDifficulty = sessionDifficulty || 'medium';
-      console.log('Generating question with params:', { role, difficulty: apiDifficulty });
-      
-      // Create context from previous questions to avoid repetition
+
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
-      const context = previousQuestions.length > 0 
+      const context = previousQuestions.length > 0
         ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
         : undefined;
-      
-      const questionData = await interviewService.generateQuestion(role, apiDifficulty, context);
-      const question = questionData.question || "Tell me about your experience with this role.";
-      
-      // Check if this question was already asked
-      if (previousQuestions.includes(question)) {
-        // If it's a repeat, try again with more specific context
-        const specificContext = `Previous questions: ${previousQuestions.join('; ')}. This question was already asked: "${question}". Please ask a completely different question about ${role} role.`;
-        const retryQuestionData = await interviewService.generateQuestion(role, apiDifficulty, specificContext);
-        const retryQuestion = retryQuestionData.question || `Let's explore a different aspect of ${role} work. What challenges have you faced in your career?`;
-        
-        setCurrentQuestion(retryQuestion);
-        setMessages(prev => [...prev, { sender: 'ai', text: retryQuestion }]);
-        scrollToBottom(200); // Scroll after retry question is added
-      } else {
-        setCurrentQuestion(question);
-        setMessages(prev => [...prev, { sender: 'ai', text: question }]);
-        scrollToBottom(200); // Scroll after question is added
-      }
+
+      await interviewService.generateQuestionStream(
+        role,
+        apiDifficulty,
+        context,
+        (token) => {
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx < 0 || prev[lastIdx].sender !== 'ai') return prev;
+            const rawAccum = (prev[lastIdx]._raw || '') + token;
+            const displayText = rawAccum.split('\n---')[0];
+            return prev.map((m, i) =>
+              i === lastIdx ? { ...m, text: displayText, isStreaming: true, _raw: rawAccum } : m
+            );
+          });
+          scrollToBottom(50);
+        },
+        (data) => {
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx < 0 || prev[lastIdx].sender !== 'ai') return prev;
+            return prev.map((m, i) =>
+              i === lastIdx ? { sender: 'ai', text: data.question } : m
+            );
+          });
+          setCurrentQuestion(data.question);
+        },
+        (error) => {
+          console.error('Question stream error:', error);
+          showErrorToast('Failed to generate question. Please try again.');
+          const fallback = `Tell me about a challenging ${role} project you've worked on recently.`;
+          setMessages(prev => {
+            const lastIdx = prev.length - 1;
+            if (lastIdx >= 0 && prev[lastIdx].isStreaming) {
+              return prev.map((m, i) => i === lastIdx ? { sender: 'ai', text: fallback } : m);
+            }
+            return [...prev, { sender: 'ai', text: fallback }];
+          });
+          setCurrentQuestion(fallback);
+        },
+      );
     } catch (error) {
       console.error('Failed to generate question:', error);
       showErrorToast('Failed to generate question. Please try again.');
-      const questionNumber = messages.filter(m => m.sender === 'ai').length + 1;
-      const fallbackQuestion = `Question ${questionNumber}: Tell me about a challenging ${role} project you've worked on recently.`;
+      const fallbackQuestion = `Tell me about a challenging ${role} project you've worked on recently.`;
+      setMessages(prev => {
+        const lastIdx = prev.length - 1;
+        if (lastIdx >= 0 && prev[lastIdx].isStreaming) {
+          return prev.map((m, i) => i === lastIdx ? { sender: 'ai', text: fallbackQuestion } : m);
+        }
+        return [...prev, { sender: 'ai', text: fallbackQuestion }];
+      });
       setCurrentQuestion(fallbackQuestion);
-      setMessages(prev => [...prev, { sender: 'ai', text: fallbackQuestion }]);
-      scrollToBottom(200); // Scroll after fallback question is added
+      scrollToBottom(200);
     } finally {
       setIsGeneratingQuestion(false);
     }
@@ -281,26 +338,45 @@ const InterviewSession = () => {
     setIsLoading(true);
     
     try {
-      // Evaluate the answer
+      // Evaluate the answer with streaming feedback
       let evaluation = null;
       try {
-        evaluation = await interviewService.evaluateAnswer(currentQuestion, answer, selectedRole);
-        console.log('Answer evaluation:', evaluation);
+        evaluation = await new Promise((resolve, reject) => {
+          interviewService.evaluateAnswerStream(
+            currentQuestion,
+            answer,
+            selectedRole,
+            (token) => {
+              // Show partial feedback as it streams in (skip the SCORE: first line)
+              setMessages(prev => prev.map((msg, index) => {
+                if (index !== userMessageIndex - 1) return msg;
+                const raw = (msg._evalRaw || '') + token;
+                const newlineIdx = raw.indexOf('\n');
+                const feedbackSoFar = newlineIdx !== -1 ? raw.slice(newlineIdx + 1).split('\n---')[0] : '';
+                return { ...msg, _evalRaw: raw, streamingFeedback: feedbackSoFar };
+              }));
+            },
+            (data) => resolve(data),
+            (error) => reject(error),
+          );
+        });
       } catch (evalError) {
         console.error('Failed to evaluate answer:', evalError);
-        // Continue without evaluation if it fails
+        // Continue without evaluation if streaming fails
       }
-      
-      // Update the user message with evaluation results
-      setMessages(prev => prev.map((msg, index) => 
-        index === userMessageIndex - 1 ? { 
-          ...msg, 
-          isEvaluating: false, 
-          evaluation: evaluation 
+
+      // Update the user message with final evaluation results
+      setMessages(prev => prev.map((msg, index) =>
+        index === userMessageIndex - 1 ? {
+          ...msg,
+          isEvaluating: false,
+          streamingFeedback: undefined,
+          _evalRaw: undefined,
+          evaluation: evaluation,
         } : msg
       ));
-      scrollToBottom(100); // Scroll after evaluation is updated
-      
+      scrollToBottom(100);
+
       // Save answer to session
       await interviewService.addQuestionAnswer(currentSession.id, currentQuestion, answer, evaluation);
       
@@ -532,13 +608,29 @@ const InterviewSession = () => {
                             {/* Evaluation Score */}
                             <div className="mt-2 text-right">
                               {message.isEvaluating ? (
-                                <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs">
-                                  <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                  </svg>
-                                  <span className="text-gray-600 dark:text-gray-300">Evaluating...</span>
-                                </div>
+                                message.streamingFeedback ? (
+                                  <div className="mt-1 text-left max-w-sm ml-auto bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
+                                    <div className="flex items-center gap-1.5 mb-1 text-forest dark:text-sage text-xs font-medium">
+                                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                      </svg>
+                                      Evaluating...
+                                    </div>
+                                    <p className="text-xs text-light-text/70 dark:text-dark-text/60 leading-relaxed">
+                                      {message.streamingFeedback}
+                                      <span className="inline-block w-0.5 h-3 bg-forest dark:bg-sage ml-0.5 align-middle animate-pulse" />
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs">
+                                    <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span className="text-gray-600 dark:text-gray-300">Evaluating...</span>
+                                  </div>
+                                )
                               ) : message.evaluation ? (
                                 <div className="inline-flex items-center space-x-2 flex-wrap justify-end gap-y-1">
                                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -590,7 +682,10 @@ const InterviewSession = () => {
                           <div className="text-left">
                             <div className="inline-block px-5 py-4 rounded-2xl shadow-md max-w-3xl bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 text-light-text dark:text-dark-text">
                               <p className="text-base leading-relaxed whitespace-pre-wrap">
-                                {message.text}
+                                {message.text || (message.isStreaming ? '\u00A0' : '')}
+                                {message.isStreaming && (
+                                  <span className="inline-block w-0.5 h-[1.1em] bg-forest dark:bg-sage ml-0.5 align-middle animate-pulse" />
+                                )}
                               </p>
                             </div>
                             <div className="text-xs text-light-text/40 dark:text-dark-text/40 mt-2 text-left">
@@ -603,7 +698,7 @@ const InterviewSession = () => {
                   </div>
                 ))}
                 
-                {isGeneratingQuestion && (
+                {isGeneratingQuestion && !messages.some(m => m.isStreaming) && (
                   <div className="flex justify-start mt-8">
                     <div className="flex items-start space-x-4 max-w-4xl">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center flex-shrink-0">

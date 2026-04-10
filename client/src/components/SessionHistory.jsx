@@ -78,6 +78,54 @@ const SessionHistory = () => {
     return 'text-red-600 dark:text-red-400';
   };
 
+  // Render inline markdown: **bold**, *italic*, `code`
+  const renderInline = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const parts = text.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*|`[^`]+?`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4)
+        return <strong key={i} className="font-semibold text-light-text dark:text-dark-text">{part.slice(2, -2)}</strong>;
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2)
+        return <em key={i} className="italic">{part.slice(1, -1)}</em>;
+      if (part.startsWith('`') && part.endsWith('`') && part.length > 2)
+        return <code key={i} className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 text-xs rounded font-mono text-blue-600 dark:text-blue-400">{part.slice(1, -1)}</code>;
+      return part;
+    });
+  };
+
+  // Render block markdown line-by-line
+  const renderMarkdown = (text) => {
+    if (!text || typeof text !== 'string') return null;
+    return text.split('\n').map((line, i) => {
+      if (line.trim() === '') return <div key={i} className="h-1" />;
+      if (line.startsWith('### '))
+        return <h3 key={i} className="text-base font-bold text-light-text dark:text-dark-text mt-4 mb-1">{renderInline(line.slice(4))}</h3>;
+      if (line.startsWith('## '))
+        return <h2 key={i} className="text-lg font-bold text-light-text dark:text-dark-text mt-4 mb-1">{renderInline(line.slice(3))}</h2>;
+      if (/^(\s{4}|\t)- /.test(line))
+        return (
+          <div key={i} className="flex items-start ml-5 mt-1">
+            <span className="text-blue-400 mr-2 flex-shrink-0 text-xs mt-1">◦</span>
+            <span className="text-light-text/80 dark:text-dark-text/80 text-sm">{renderInline(line.replace(/^(\s+- )/, ''))}</span>
+          </div>
+        );
+      if (line.startsWith('- '))
+        return (
+          <div key={i} className="flex items-start mt-2">
+            <span className="text-blue-500 mr-2 flex-shrink-0 mt-0.5">•</span>
+            <span className="text-light-text/80 dark:text-dark-text/80 text-sm">{renderInline(line.slice(2))}</span>
+          </div>
+        );
+      if (line.startsWith('> '))
+        return (
+          <blockquote key={i} className="border-l-4 border-blue-500 pl-4 my-2 text-light-text/80 dark:text-dark-text/80 italic text-sm">
+            {renderInline(line.slice(2))}
+          </blockquote>
+        );
+      return <p key={i} className="text-light-text/80 dark:text-dark-text/80 text-sm mt-1">{renderInline(line)}</p>;
+    });
+  };
+
   const isActiveSession = session && !session.completed && (session.status === 'active' || session.status === 'in_progress');
 
   if (loading) {
@@ -254,35 +302,66 @@ const SessionHistory = () => {
       {session.summary && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold text-light-text dark:text-dark-text mb-4">Interview Summary</h2>
-          <div className="card p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {session.summary.overallScore && (
-                <div>
-                  <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-1">Overall Score</p>
-                  <p className={`text-3xl font-bold ${getScoreColor(session.summary.overallScore)}`}>
-                    {session.summary.overallScore}/10
-                  </p>
-                </div>
-              )}
-              {session.summary.strengths && (
-                <div>
-                  <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-1">Strengths</p>
-                  <p className="text-light-text/80 dark:text-dark-text/80 text-sm leading-relaxed">{session.summary.strengths}</p>
-                </div>
-              )}
-              {session.summary.improvements && (
-                <div>
-                  <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-1">Areas for Improvement</p>
-                  <p className="text-light-text/80 dark:text-dark-text/80 text-sm leading-relaxed">{session.summary.improvements}</p>
-                </div>
-              )}
-              {session.summary.recommendations && (
-                <div>
-                  <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-1">Recommendations</p>
-                  <p className="text-light-text/80 dark:text-dark-text/80 text-sm leading-relaxed">{session.summary.recommendations}</p>
-                </div>
-              )}
-            </div>
+          <div className="card p-6 space-y-6">
+
+            {/* Overall Score — full width, prominent */}
+            {session.summary.overallScore && (
+              <div className="pb-4 border-b border-light-border dark:border-dark-border">
+                <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-1">Overall Score</p>
+                <p className={`text-4xl font-bold ${getScoreColor(session.summary.overallScore)}`}>
+                  {session.summary.overallScore}/10
+                </p>
+              </div>
+            )}
+
+            {/* Strengths + Areas for Improvement — side by side */}
+            {(session.summary.strengths || session.summary.improvements) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {session.summary.strengths && (
+                  <div>
+                    <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-2">Strengths</p>
+                    {Array.isArray(session.summary.strengths) ? (
+                      <ul className="space-y-1">
+                        {session.summary.strengths.map((s, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-light-text/80 dark:text-dark-text/80">
+                            <span className="text-green-500 flex-shrink-0 mt-0.5">•</span>
+                            <span>{renderInline(s)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div>{renderMarkdown(session.summary.strengths)}</div>
+                    )}
+                  </div>
+                )}
+
+                {session.summary.improvements && (
+                  <div>
+                    <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-2">Areas for Improvement</p>
+                    {Array.isArray(session.summary.improvements) ? (
+                      <ul className="space-y-1">
+                        {session.summary.improvements.map((s, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-light-text/80 dark:text-dark-text/80">
+                            <span className="text-blue-500 flex-shrink-0 mt-0.5">•</span>
+                            <span>{renderInline(s)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div>{renderMarkdown(session.summary.improvements)}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Recommendations — full width, rich markdown */}
+            {session.summary.recommendations && (
+              <div className="pt-2 border-t border-light-border dark:border-dark-border">
+                <p className="text-xs font-semibold text-light-text/50 dark:text-dark-text/50 uppercase tracking-wide mb-3">Recommendations</p>
+                <div className="leading-relaxed">{renderMarkdown(session.summary.recommendations)}</div>
+              </div>
+            )}
           </div>
         </div>
       )}
