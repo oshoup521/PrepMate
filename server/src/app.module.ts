@@ -14,6 +14,25 @@ import { CustomLoggerService } from './common/services/logger.service';
 import { EmailService } from './common/services/email.service';
 import { CustomCacheModule } from './cache/cache.module';
 
+function parseDbUrl(rawUrl: string) {
+  // Strip protocol
+  const withoutProtocol = rawUrl.replace(/^(?:postgresql|postgres):\/\//, '');
+  // Use last @ to split credentials from host (handles @ in password)
+  const lastAt = withoutProtocol.lastIndexOf('@');
+  const credentials = withoutProtocol.substring(0, lastAt);
+  const hostPart = withoutProtocol.substring(lastAt + 1);
+  // Split username:password
+  const colonIdx = credentials.indexOf(':');
+  const username = credentials.substring(0, colonIdx);
+  const password = credentials.substring(colonIdx + 1); // raw, no decoding
+  // Split host:port/database
+  const slashIdx = hostPart.indexOf('/');
+  const hostPort = hostPart.substring(0, slashIdx);
+  const database = hostPart.substring(slashIdx + 1);
+  const [host, portStr] = hostPort.split(':');
+  return { host, port: parseInt(portStr, 10) || 5432, username, password, database };
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -35,11 +54,12 @@ import { CustomCacheModule } from './cache/cache.module';
         ttl: 60000,
         limit: 100,
       },
-    ]),    TypeOrmModule.forRoot(
+    ]),
+    TypeOrmModule.forRoot(
       process.env.DATABASE_URL
         ? {
             type: 'postgres' as const,
-            url: process.env.DATABASE_URL,
+            ...parseDbUrl(process.env.DATABASE_URL),
             entities: [User, InterviewSession],
             synchronize: true,
             ssl: { rejectUnauthorized: false },
