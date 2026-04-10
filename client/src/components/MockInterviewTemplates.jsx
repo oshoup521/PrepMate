@@ -9,6 +9,7 @@ const MockInterviewTemplates = () => {
     {
       id: 'frontend-react',
       title: 'Frontend Developer - React',
+      role: 'Frontend Developer',
       company: 'Tech Startup',
       difficulty: 'medium',
       duration: '45 minutes',
@@ -19,9 +20,10 @@ const MockInterviewTemplates = () => {
     {
       id: 'backend-node',
       title: 'Backend Developer - Node.js',
+      role: 'Backend Developer',
       company: 'Enterprise Corp',
       difficulty: 'hard',
-      duration: '60 minutes', 
+      duration: '60 minutes',
       description: 'Node.js, Express, databases, API design, and system architecture.',
       topics: ['REST APIs', 'Database Design', 'Authentication', 'Scalability'],
       icon: '🚀'
@@ -29,6 +31,7 @@ const MockInterviewTemplates = () => {
     {
       id: 'fullstack-general',
       title: 'Full Stack Developer',
+      role: 'Full Stack Developer',
       company: 'Mid-size Company',
       difficulty: 'medium',
       duration: '50 minutes',
@@ -39,6 +42,7 @@ const MockInterviewTemplates = () => {
     {
       id: 'data-scientist',
       title: 'Data Scientist',
+      role: 'Data Scientist',
       company: 'Analytics Firm',
       difficulty: 'hard',
       duration: '60 minutes',
@@ -49,6 +53,7 @@ const MockInterviewTemplates = () => {
     {
       id: 'devops-engineer',
       title: 'DevOps Engineer',
+      role: 'DevOps Engineer',
       company: 'Cloud Company',
       difficulty: 'hard',
       duration: '55 minutes',
@@ -59,6 +64,7 @@ const MockInterviewTemplates = () => {
     {
       id: 'mobile-developer',
       title: 'Mobile Developer',
+      role: 'Full Stack Developer',
       company: 'Mobile App Startup',
       difficulty: 'medium',
       duration: '45 minutes',
@@ -80,8 +86,8 @@ const MockInterviewTemplates = () => {
   const handleStartTemplate = (template) => {
     // Navigate to interview with template parameters
     navigate('/interview', { 
-      state: { 
-        role: template.title,
+      state: {
+        role: template.role,
         difficulty: template.difficulty,
         template: template 
       } 
