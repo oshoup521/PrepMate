@@ -22,7 +22,7 @@ export class User {
   @Exclude()
   emailVerificationToken: string | null;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: process.env.DATABASE_URL ? 'timestamp' : 'datetime', nullable: true })
   @Exclude()
   emailVerificationExpires: Date | null;
 
@@ -30,7 +30,7 @@ export class User {
   @Exclude()
   passwordResetToken: string | null;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: process.env.DATABASE_URL ? 'timestamp' : 'datetime', nullable: true })
   @Exclude()
   passwordResetExpires: Date | null;
 
