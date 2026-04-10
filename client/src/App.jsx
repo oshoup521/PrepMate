@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
@@ -21,7 +21,17 @@ import TermsOfService from './components/TermsOfService';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import './App.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const PING_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
 function App() {
+  useEffect(() => {
+    const ping = () => fetch(`${API_URL}/health`).catch(() => {});
+    ping();
+    const interval = setInterval(ping, PING_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
