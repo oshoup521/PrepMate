@@ -8,6 +8,9 @@ import { LoadingCard, Button } from './LoadingSpinner';
 import interviewService from '../services/interviewService';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
+import { useQuestionTimer } from '../hooks/useQuestionTimer';
+
+const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 const InterviewSession = () => {
   const [searchParams] = useSearchParams();
@@ -28,6 +31,10 @@ const InterviewSession = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [isEndingInterview, setIsEndingInterview] = useState(false);
+
+  // Per-question timing
+  const { elapsed, isRunning: timerRunning, start: startTimer, stop: stopTimer } = useQuestionTimer();
+  const [questionTimings, setQuestionTimings] = useState([]); // seconds per answered question
   
   const chatContainerRef = useRef(null);
   const scrollAreaRef = useRef(null);
@@ -59,6 +66,13 @@ const InterviewSession = () => {
       scrollToBottom(150);
     }
   }, [currentQuestion]);
+
+  // Start timer whenever a new question appears
+  useEffect(() => {
+    if (currentQuestion && phase === 'interview') {
+      startTimer();
+    }
+  }, [currentQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadExistingSession = async () => {
     setIsLoading(true);
@@ -256,10 +270,13 @@ const InterviewSession = () => {
 
   const handleAnswer = async (answer) => {
     if (!answer.trim() || !currentQuestion) return;
-    
+
+    const timeTaken = stopTimer();
+
     // Add user answer to chat (initially without score)
     const userMessageIndex = messages.length + 1;
-    setMessages(prev => [...prev, { sender: 'user', text: answer, isEvaluating: true }]);
+    setMessages(prev => [...prev, { sender: 'user', text: answer, isEvaluating: true, timeTaken }]);
+    setQuestionTimings(prev => [...prev, timeTaken]);
     scrollToBottom(150); // Scroll after user answer is added
     setIsLoading(true);
     
@@ -324,6 +341,7 @@ const InterviewSession = () => {
   };
 
   const resetInterview = () => {
+    stopTimer();
     setPhase('setup');
     setSelectedRole('');
     setDifficulty('intermediate');
@@ -332,6 +350,7 @@ const InterviewSession = () => {
     setCurrentQuestion('');
     setSummary(null);
     setShowConfetti(false);
+    setQuestionTimings([]);
     navigate('/interview');
   };
 
@@ -340,7 +359,7 @@ const InterviewSession = () => {
     return (
       <div className="bg-light-bg dark:bg-dark-bg">
         {showConfetti && <ConfettiEffect />}
-        <InterviewSummary summary={summary} onReset={resetInterview} />
+        <InterviewSummary summary={summary} onReset={resetInterview} questionTimings={questionTimings} />
       </div>
     );
   }
@@ -426,6 +445,18 @@ const InterviewSession = () => {
                     <span>Question {questionCount}</span>
                     <span>•</span>
                     <span>{answerCount} answered</span>
+                    {timerRunning && (
+                      <>
+                        <span>•</span>
+                        <span className={`font-mono transition-colors ${
+                          elapsed > 120 ? 'text-red-400 dark:text-red-400' :
+                          elapsed > 60  ? 'text-yellow-500 dark:text-yellow-400' :
+                          ''
+                        }`}>
+                          ⏱ {formatTime(elapsed)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -509,7 +540,7 @@ const InterviewSession = () => {
                                   <span className="text-gray-600 dark:text-gray-300">Evaluating...</span>
                                 </div>
                               ) : message.evaluation ? (
-                                <div className="inline-flex items-center space-x-2">
+                                <div className="inline-flex items-center space-x-2 flex-wrap justify-end gap-y-1">
                                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                                     message.evaluation.score >= 8 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
                                     message.evaluation.score >= 6 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
@@ -521,6 +552,11 @@ const InterviewSession = () => {
                                     </svg>
                                     Score: {message.evaluation.score}/10
                                   </div>
+                                  {message.timeTaken !== undefined && (
+                                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-mono">
+                                      ⏱ {formatTime(message.timeTaken)}
+                                    </div>
+                                  )}
                                   {message.evaluation.feedback && (
                                     <div className="text-xs text-light-text/60 dark:text-dark-text/60 max-w-xs line-clamp-2">
                                       {message.evaluation.feedback}
@@ -528,8 +564,11 @@ const InterviewSession = () => {
                                   )}
                                 </div>
                               ) : (
-                                <div className="text-xs text-light-text/40 dark:text-dark-text/40">
-                                  You
+                                <div className="flex items-center justify-end gap-2 text-xs text-light-text/40 dark:text-dark-text/40">
+                                  <span>You</span>
+                                  {message.timeTaken !== undefined && (
+                                    <span className="font-mono">⏱ {formatTime(message.timeTaken)}</span>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -2,7 +2,9 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './LoadingSpinner';
 
-const InterviewSummary = ({ summary, onReset }) => {
+const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+const InterviewSummary = ({ summary, onReset, questionTimings = [] }) => {
   const navigate = useNavigate();
   if (!summary) return null;
 
@@ -187,6 +189,11 @@ const InterviewSummary = ({ summary, onReset }) => {
     return '📚';
   };
 
+  const hasTimings = questionTimings.length > 0;
+  const totalTime = hasTimings ? questionTimings.reduce((a, b) => a + b, 0) : 0;
+  const avgTime = hasTimings ? Math.round(totalTime / questionTimings.length) : 0;
+  const maxTime = hasTimings ? Math.max(...questionTimings) : 0;
+
   return (
     <div className="bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -219,7 +226,7 @@ const InterviewSummary = ({ summary, onReset }) => {
                   </p>
                 </div>
                 
-                <div className="flex justify-center sm:justify-end space-x-8">
+                <div className="flex justify-center sm:justify-end flex-wrap gap-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-light-text dark:text-dark-text">
                       {questionsCount}
@@ -236,10 +243,91 @@ const InterviewSummary = ({ summary, onReset }) => {
                       Answered
                     </div>
                   </div>
+                  {hasTimings && (
+                    <>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold font-mono text-light-text dark:text-dark-text">
+                          {formatTime(totalTime)}
+                        </div>
+                        <div className="text-sm text-light-text/60 dark:text-dark-text/60">
+                          Total Time
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold font-mono text-light-text dark:text-dark-text">
+                          {formatTime(avgTime)}
+                        </div>
+                        <div className="text-sm text-light-text/60 dark:text-dark-text/60">
+                          Avg / Question
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Time Breakdown */}
+          {hasTimings && (
+            <div className="card p-6 mb-8">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-light-text dark:text-dark-text">
+                  Time Per Question
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {questionTimings.map((t, i) => {
+                  const pct = maxTime > 0 ? Math.round((t / maxTime) * 100) : 0;
+                  const isSlower = t === maxTime && questionTimings.length > 1;
+                  const isFastest = t === Math.min(...questionTimings) && questionTimings.length > 1;
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-light-text/60 dark:text-dark-text/60 w-6 text-right flex-shrink-0">
+                        Q{i + 1}
+                      </span>
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            isSlower  ? 'bg-red-400 dark:bg-red-500' :
+                            isFastest ? 'bg-green-500 dark:bg-green-400' :
+                            'bg-indigo-400 dark:bg-indigo-500'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs font-mono w-10 flex-shrink-0 ${
+                        isSlower  ? 'text-red-500 dark:text-red-400' :
+                        isFastest ? 'text-green-600 dark:text-green-400' :
+                        'text-light-text/70 dark:text-dark-text/70'
+                      }`}>
+                        {formatTime(t)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {questionTimings.length > 1 && (
+                <div className="mt-4 flex gap-4 text-xs text-light-text/50 dark:text-dark-text/50">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                    Fastest: {formatTime(Math.min(...questionTimings))}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
+                    Slowest: {formatTime(maxTime)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Feedback Cards */}
           <div className="grid md:grid-cols-2 gap-6 mb-8">
