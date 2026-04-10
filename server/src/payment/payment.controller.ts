@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Request, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Delete, Post, Request, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PaymentService } from './payment.service';
@@ -31,5 +31,13 @@ export class PaymentController {
       dto.razorpay_signature,
       dto.plan,
     );
+  }
+
+  @ApiOperation({ summary: 'Cancel Pro subscription and revert to free plan' })
+  @ApiResponse({ status: 200, description: 'Subscription cancelled' })
+  @Delete('subscription')
+  @HttpCode(HttpStatus.OK)
+  cancelSubscription(@Request() req) {
+    return this.paymentService.cancelSubscription(req.user.id);
   }
 }

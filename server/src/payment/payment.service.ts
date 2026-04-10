@@ -55,4 +55,10 @@ export class PaymentService {
     this.logger.log(`User ${userId} upgraded to pro (${plan})`);
     return { success: true };
   }
+
+  async cancelSubscription(userId: string) {
+    await this.usersService.cancelSubscription(userId);
+    this.logger.log(`Subscription cancelled for user ${userId}`);
+    return { success: true, message: 'Subscription cancelled successfully' };
+  }
 }

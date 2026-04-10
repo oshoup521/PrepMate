@@ -127,4 +127,15 @@ export class UsersService {
       razorpayOrderId,
     });
   }
+
+  async cancelSubscription(userId: string): Promise<void> {
+    await this.usersRepository.update(userId, {
+      plan: 'free',
+      planExpiresAt: null,
+      billingCycle: 'monthly',
+      razorpayPaymentId: null,
+      razorpayOrderId: null,
+    });
+    this.logger.log(`Subscription cancelled for user ${userId}`);
+  }
 }

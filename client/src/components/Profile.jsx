@@ -4,6 +4,7 @@ import AuthContext from '../contexts/AuthContext';
 import interviewService from '../services/interviewService';
 import { Button } from './LoadingSpinner';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 /* ─── Password eye toggle field ─── */
 const PasswordField = ({ id, label, value, onChange, error, placeholder }) => {
@@ -89,9 +90,12 @@ function daysUntil(dateStr) {
    ══════════════════════════════════════════════ */
 const Profile = () => {
   const { currentUser } = useContext(AuthContext);
+  const { refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [pwOpen, setPwOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword]         = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,6 +114,20 @@ const Profile = () => {
       e.newPassword = 'New password must be different from current password';
     setErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelLoading(true);
+    try {
+      await interviewService.cancelSubscription();
+      await refreshUser();
+      setCancelOpen(false);
+      showSuccessToast('Subscription cancelled. You are now on the Free plan.');
+    } catch {
+      showErrorToast('Failed to cancel subscription. Please try again.');
+    } finally {
+      setCancelLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -351,7 +369,10 @@ const Profile = () => {
                   {/* Footer */}
                   <div className="border-t border-white/10 pt-5 mt-auto">
                     <p className="text-white/40 text-xs mb-4">
-                      Your plan auto-renews on {renewalStr || 'your billing date'}. To cancel, reach out to support before the renewal date.
+                      {renewalStr
+                        ? `Your plan is active until ${renewalStr}.`
+                        : 'Your Pro plan is active.'}{' '}
+                      Cancelling will immediately revert your account to the Free plan.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
@@ -360,12 +381,12 @@ const Profile = () => {
                       >
                         Go to Dashboard
                       </button>
-                      <a
-                        href="mailto:support@prepmate.com?subject=Cancel%20Subscription"
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-medium text-sm hover:bg-white/20 transition-colors text-center active:scale-[0.98]"
+                      <button
+                        onClick={() => setCancelOpen(true)}
+                        className="flex-1 py-2.5 rounded-xl bg-white/10 text-white font-medium text-sm hover:bg-red-500/30 hover:text-red-200 transition-colors active:scale-[0.98]"
                       >
-                        Contact Support
-                      </a>
+                        Cancel Subscription
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -422,6 +443,52 @@ const Profile = () => {
 
         </div>
       </div>
+
+      {/* ── Cancel Subscription Confirmation Modal ── */}
+      {cancelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-dark-muted rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-bold text-center text-light-text dark:text-dark-text mb-2">
+              Cancel subscription?
+            </h3>
+            <p className="text-sm text-light-text/60 dark:text-dark-text/60 text-center mb-6">
+              You will immediately lose access to all Pro features and be moved to the Free plan (5 sessions total). This cannot be undone.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setCancelOpen(false)}
+                disabled={cancelLoading}
+                className="flex-1 py-2.5 rounded-xl border border-light-border dark:border-dark-border text-light-text dark:text-dark-text font-medium text-sm hover:bg-light-bg dark:hover:bg-dark-bg transition-colors disabled:opacity-50"
+              >
+                Keep my plan
+              </button>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {cancelLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Cancelling…
+                  </>
+                ) : 'Yes, cancel subscription'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
