@@ -172,6 +172,18 @@ export const interviewService = {
       throw error;
     }
   },
+
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await apiClient.post('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default interviewService;

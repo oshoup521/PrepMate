@@ -10,6 +10,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --header-height: 64px;
 }
 
 /* Smooth transitions for theme changes */
@@ -428,6 +429,57 @@ html {
   }
   40% {
     transform: scale(1);
+  }
+}
+
+/* =============================================
+   MOBILE-FIRST INTERVIEW LAYOUT
+   Uses dynamic viewport height (dvh) to handle
+   virtual keyboard on iOS/Android
+   ============================================= */
+
+.interview-layout {
+  /* Fill exactly the space below the sticky header */
+  height: calc(100dvh - var(--header-height));
+  height: calc(100vh - var(--header-height)); /* Fallback */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.interview-chat-area {
+  flex: 1;
+  min-height: 0; /* Required for flex children to scroll properly */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent layout shift when keyboard appears on mobile */
+.interview-input-bar {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  /* Push above safe-area (notch / home indicator on iOS) */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Safe-area padding for phones with notches / home indicators */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 640px) {
+  .btn, button {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
   }
 }
 

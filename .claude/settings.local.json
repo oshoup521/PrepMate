@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(64\\).toString\\('hex'\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(taskkill /F /IM node.exe /T)"
+    ]
+  }
+}

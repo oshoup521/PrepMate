@@ -3,8 +3,7 @@ import AuthContext from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import interviewService from '../services/interviewService';
 import { LoadingPage, LoadingCard, Button } from './LoadingSpinner';
-import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
-import toast from 'react-hot-toast';
+import { showErrorToast } from '../utils/errorHandler';
 
 const Dashboard = () => {
   const [sessions, setSessions] = useState([]);
@@ -16,7 +15,6 @@ const Dashboard = () => {
     inProgressSessions: 0,
     averageScore: null
   });
-  const [isStartingInterview, setIsStartingInterview] = useState(false);
   const { currentUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -27,52 +25,46 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      const [sessionsData, progressData] = await Promise.all([
+
+      // Use allSettled so one failure doesn't block the other
+      const [sessionsResult, progressResult] = await Promise.allSettled([
         interviewService.getUserSessions(),
         interviewService.getUserProgress()
       ]);
 
-      setSessions(sessionsData || []);
-      
-      // Ensure we have valid numbers for all stats
-      const safeProgressStats = {
-        totalSessions: Number(progressData?.totalSessions) || 0,
-        completedSessions: Number(progressData?.completedSessions) || 0,
-        activeSessions: Number(progressData?.activeSessions) || 0,
-        inProgressSessions: Number(progressData?.inProgressSessions) || 0,
-        averageScore: progressData?.averageScore !== null && progressData?.averageScore !== undefined ? Number(progressData.averageScore) : null
-      };
-      
-      setProgressStats(safeProgressStats);
-      
+      if (sessionsResult.status === 'fulfilled') {
+        setSessions(sessionsResult.value || []);
+      } else {
+        console.error('Failed to load sessions:', sessionsResult.reason);
+        setSessions([]);
+      }
+
+      if (progressResult.status === 'fulfilled') {
+        const progressData = progressResult.value;
+        setProgressStats({
+          totalSessions: Number(progressData?.totalSessions) || 0,
+          completedSessions: Number(progressData?.completedSessions) || 0,
+          activeSessions: Number(progressData?.activeSessions) || 0,
+          inProgressSessions: Number(progressData?.inProgressSessions) || 0,
+          averageScore: progressData?.averageScore != null ? Number(progressData.averageScore) : null
+        });
+      } else {
+        console.error('Failed to load progress:', progressResult.reason);
+      }
+
+      if (sessionsResult.status === 'rejected' && progressResult.status === 'rejected') {
+        showErrorToast('Failed to load dashboard data');
+      }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       showErrorToast('Failed to load dashboard data');
-      
-      // Set default values on error
-      setProgressStats({
-        totalSessions: 0,
-        completedSessions: 0,
-        activeSessions: 0,
-        inProgressSessions: 0,
-        averageScore: null
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStartInterview = async () => {
-    try {
-    setIsStartingInterview(true);
+  const handleStartInterview = () => {
     navigate('/interview');
-    } catch (error) {
-      console.error('Failed to start interview:', error);
-      showErrorToast('Failed to start interview');
-    } finally {
-      setIsStartingInterview(false);
-    }
   };
 
   const handleViewSession = (sessionId) => {
@@ -179,18 +171,13 @@ const Dashboard = () => {
           <div className="flex-shrink-0">
             <Button
               onClick={handleStartInterview}
-              loading={isStartingInterview}
-              disabled={isStartingInterview}
               variant="primary"
               size="lg"
               className="w-full sm:w-auto shadow-lg hover:shadow-xl"
-              loadingText="Starting..."
               leftIcon={
-                !isStartingInterview && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                )
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
               }
             >
               Start New Interview
@@ -200,47 +187,75 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8 sm:mb-12">
         <div className="card progress-card">
-          <div className="progress-stat">
-            <div className="text-2xl sm:text-3xl font-bold text-forest dark:text-sage">
-              {progressStats.totalSessions}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-forest/10 dark:bg-sage/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-forest dark:text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-            <div className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
-              Total Sessions
+            <div>
+              <div className="text-xl sm:text-2xl font-bold text-forest dark:text-sage">
+                {progressStats.totalSessions}
+              </div>
+              <div className="text-xs sm:text-sm text-light-text/60 dark:text-dark-text/60">
+                Total
+              </div>
             </div>
           </div>
         </div>
 
         <div className="card progress-card">
-          <div className="progress-stat">
-            <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
-              {progressStats.completedSessions}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <div className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
-              Completed
-            </div>
-          </div>
-        </div>
-
-        <div className="card progress-card">
-          <div className="progress-stat">
-            <div className="text-2xl sm:text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-              {progressStats.inProgressSessions}
-            </div>
-            <div className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
-              In Progress
+            <div>
+              <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                {progressStats.completedSessions}
+              </div>
+              <div className="text-xs sm:text-sm text-light-text/60 dark:text-dark-text/60">
+                Done
+              </div>
             </div>
           </div>
         </div>
 
         <div className="card progress-card">
-          <div className="progress-stat">
-            <div className={`text-2xl sm:text-3xl font-bold ${getScoreColor(progressStats.averageScore)}`}>
-              {progressStats.averageScore !== null && progressStats.averageScore !== undefined ? `${progressStats.averageScore}/10` : 'N/A'}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <div className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
-              Average Score
+            <div>
+              <div className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                {progressStats.inProgressSessions}
+              </div>
+              <div className="text-xs sm:text-sm text-light-text/60 dark:text-dark-text/60">
+                Active
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card progress-card">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </div>
+            <div>
+              <div className={`text-xl sm:text-2xl font-bold ${getScoreColor(progressStats.averageScore)}`}>
+                {progressStats.averageScore !== null && progressStats.averageScore !== undefined ? `${progressStats.averageScore}/10` : 'N/A'}
+              </div>
+              <div className="text-xs sm:text-sm text-light-text/60 dark:text-dark-text/60">
+                Avg Score
+              </div>
             </div>
           </div>
         </div>
@@ -282,17 +297,13 @@ const Dashboard = () => {
                 Start your first interview session to begin tracking your progress and improving your skills.
               </p>
             <Button
-                onClick={handleStartInterview}
-              loading={isStartingInterview}
+              onClick={handleStartInterview}
               variant="primary"
               size="lg"
-              loadingText="Starting..."
               leftIcon={
-                !isStartingInterview && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                )
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
               }
             >
               Start Your First Interview

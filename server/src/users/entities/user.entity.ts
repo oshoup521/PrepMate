@@ -15,14 +15,14 @@ export class User {
   @Column()
   @Exclude()
   password: string;
-  @Column({ default: false })
+  @Column({ default: true })
   isEmailVerified: boolean;
   
   @Column({ type: 'text', nullable: true })
   @Exclude()
   emailVerificationToken: string | null;
 
-  @Column({ type: process.env.DATABASE_URL ? 'timestamp' : 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   @Exclude()
   emailVerificationExpires: Date | null;
 
@@ -30,7 +30,7 @@ export class User {
   @Exclude()
   passwordResetToken: string | null;
 
-  @Column({ type: process.env.DATABASE_URL ? 'timestamp' : 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   @Exclude()
   passwordResetExpires: Date | null;
 

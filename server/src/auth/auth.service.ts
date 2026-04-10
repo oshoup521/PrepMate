@@ -19,10 +19,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
     
-    if (!user.isEmailVerified) {
-      throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for a verification email.');
-    }
-    
+    // Email verification check disabled — isEmailVerified defaults to true
+    // if (!user.isEmailVerified) {
+    //   throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for a verification email.');
+    // }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     if (!isPasswordValid) {
@@ -46,53 +47,40 @@ export class AuthService {
     };
   }  async register(email: string, name: string, password: string) {
     const existingUser = await this.usersService.findByEmail(email);
-    
+
     if (existingUser) {
       throw new UnauthorizedException('Email already exists');
     }
-    
-    // Generate email verification token
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    
-    // For development environment, create user with email already verified
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
+
+    // Auto-verify all users (email sending disabled)
     const user = await this.usersService.create(
-      email, 
-      name, 
-      password, 
-      isDevelopment ? undefined : emailVerificationToken, 
-      isDevelopment ? undefined : emailVerificationExpires,
-      isDevelopment // Auto-verify in development
+      email,
+      name,
+      password,
+      undefined,
+      undefined,
+      true // isEmailVerified = true by default
     );
-    
-    // In development, auto-login the user
-    if (isDevelopment) {
-      const payload = { email: user.email, sub: user.id };
-      return {
-        access_token: this.jwtService.sign(payload),
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          isEmailVerified: true,
-        },
-        message: 'Registration successful! Auto-logged in for development.'
-      };
-    }
-    
-    // Send verification email in production
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      emailVerificationToken,
-      user.name
-    );
-    
+
+    // Auto-login after registration
+    const payload = { email: user.email, sub: user.id };
     return {
-      message: 'Registration successful. Please check your email to verify your account.',
-      email: user.email,
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isEmailVerified: true,
+      },
+      message: 'Registration successful!',
     };
+
+    // NOTE: Email verification flow is disabled.
+    // To re-enable, generate a token, save it, and send via:
+    // const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    // const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // await this.emailService.sendVerificationEmail(user.email, emailVerificationToken, user.name);
+    // return { message: 'Registration successful. Please check your email to verify your account.', email: user.email };
   }
   async verifyEmail(token: string) {
     const user = await this.usersService.findByVerificationToken(token);
@@ -106,8 +94,8 @@ export class AuthService {
     
     await this.usersService.verifyEmail(user.id);
     
-    // Send welcome email
-    await this.emailService.sendWelcomeEmail(user.email, user.name);
+    // Email sending disabled
+    // await this.emailService.sendWelcomeEmail(user.email, user.name);
     
     return {
       message: 'Email verified successfully. You can now log in.',
@@ -163,12 +151,13 @@ export class AuthService {
       emailVerificationExpires
     );
     
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      emailVerificationToken,
-      user.name
-    );
-    
+    // Email sending disabled
+    // await this.emailService.sendVerificationEmail(
+    //   user.email,
+    //   emailVerificationToken,
+    //   user.name
+    // );
+
     return {
       message: 'Verification email sent. Please check your inbox.',
     };
@@ -193,12 +182,13 @@ export class AuthService {
       resetExpires
     );
     
-    await this.emailService.sendPasswordResetEmail(
-      user.email,
-      resetToken,
-      user.name
-    );
-    
+    // Email sending disabled
+    // await this.emailService.sendPasswordResetEmail(
+    //   user.email,
+    //   resetToken,
+    //   user.name
+    // );
+
     return {
       message: 'If an account with that email exists, a password reset link has been sent.',
     };
@@ -206,18 +196,39 @@ export class AuthService {
 
   async resetPassword(token: string, newPassword: string) {
     const user = await this.usersService.findByResetToken(token);
-    
+
     if (!user) {
       throw new BadRequestException('Invalid reset token');
     }
       if (!user.passwordResetExpires || user.passwordResetExpires < new Date()) {
       throw new BadRequestException('Reset token has expired');
     }
-    
+
     await this.usersService.updatePassword(user.id, newPassword);
-    
+
     return {
       message: 'Password reset successfully. You can now log in with your new password.',
     };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('New password must be different from the current password');
+    }
+
+    await this.usersService.updatePassword(user.id, newPassword);
+
+    return { message: 'Password changed successfully.' };
   }
 }

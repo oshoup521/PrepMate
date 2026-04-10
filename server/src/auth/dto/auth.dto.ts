@@ -83,6 +83,28 @@ export class ForgotPasswordDto {
   email: string;
 }
 
+export class ChangePasswordDto {
+  @ApiProperty({
+    example: 'currentpassword123',
+    description: 'Current password'
+  })
+  @IsNotEmpty({ message: 'Current password is required' })
+  @IsString()
+  currentPassword: string;
+
+  @ApiProperty({
+    example: 'newpassword456',
+    description: 'New password',
+    minLength: 6,
+    maxLength: 100
+  })
+  @IsNotEmpty({ message: 'New password is required' })
+  @IsString()
+  @MinLength(6, { message: 'New password must be at least 6 characters long' })
+  @MaxLength(100, { message: 'New password must not exceed 100 characters' })
+  newPassword: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty({ 
     example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',

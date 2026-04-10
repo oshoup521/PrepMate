@@ -109,32 +109,46 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
         </p>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {roles.map((role) => (
-            <button
-              key={role.id}
-              onClick={() => onRoleSelect(role.title)}
-              className={`
-                p-4 rounded-lg border-2 transition-all duration-200 text-left
-                ${selectedRole === role.title 
-                  ? `${role.borderColor} ${role.bgColor} shadow-lg ring-2 ring-offset-2 ring-forest/20 dark:ring-sage/20` 
-                  : 'border-light-border dark:border-dark-border hover:border-forest/40 dark:hover:border-sage/40 hover:shadow-md'
-                }
-                bg-white dark:bg-dark-muted
-              `}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="text-2xl">{role.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <h4 className={`font-medium text-sm ${selectedRole === role.title ? role.textColor : 'text-light-text dark:text-dark-text'}`}>
-                    {role.title}
-                  </h4>
-                  <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1 truncate">
-                    {role.description}
-                  </p>
+          {roles.map((role) => {
+            const isSelected = selectedRole === role.title;
+            return (
+              <button
+                key={role.id}
+                onClick={() => onRoleSelect(role.title)}
+                className={`
+                  p-4 rounded-xl border-2 transition-all duration-200 text-left relative
+                  ${isSelected
+                    ? 'border-forest dark:border-sage bg-forest/10 dark:bg-sage/15 shadow-md scale-[1.02]'
+                    : 'border-light-border dark:border-dark-border bg-white dark:bg-dark-muted hover:border-forest/50 dark:hover:border-sage/50 hover:bg-forest/5 dark:hover:bg-sage/5 hover:shadow-sm'
+                  }
+                `}
+              >
+                {/* Selected checkmark */}
+                {isSelected && (
+                  <span className="absolute top-2.5 right-2.5 w-5 h-5 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                )}
+                <div className="flex items-center space-x-3">
+                  <div className={`text-2xl w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200
+                    ${isSelected ? 'bg-forest/15 dark:bg-sage/20' : role.bgColor}`}>
+                    {role.icon}
+                  </div>
+                  <div className="flex-1 min-w-0 pr-5">
+                    <h4 className={`font-semibold text-sm transition-colors duration-200
+                      ${isSelected ? 'text-forest dark:text-sage' : 'text-light-text dark:text-dark-text'}`}>
+                      {role.title}
+                    </h4>
+                    <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-0.5 truncate">
+                      {role.description}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -148,28 +162,48 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
         </p>
         
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {difficulties.map((difficulty) => (
-            <button
-              key={difficulty.id}
-              onClick={() => onDifficultySelect(difficulty.id)}
-              className={`
-                p-4 rounded-lg border-2 transition-all duration-200 text-center
-                ${selectedDifficulty === difficulty.id 
-                  ? `${difficulty.borderColor} ${difficulty.bgColor} shadow-lg ring-2 ring-offset-2 ring-forest/20 dark:ring-sage/20` 
-                  : 'border-light-border dark:border-dark-border hover:border-forest/40 dark:hover:border-sage/40 hover:shadow-md'
-                }
-                bg-white dark:bg-dark-muted
-              `}
-            >
-              <div className="text-2xl mb-2">{difficulty.icon}</div>
-              <h4 className={`font-medium text-sm ${selectedDifficulty === difficulty.id ? difficulty.textColor : 'text-light-text dark:text-dark-text'}`}>
-                {difficulty.title}
-              </h4>
-              <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1">
-                {difficulty.description}
-              </p>
-            </button>
-          ))}
+          {difficulties.map((difficulty) => {
+            const isSelected = selectedDifficulty === difficulty.id;
+            const selectedColors = {
+              beginner:     'border-green-500  dark:border-green-400  bg-green-50   dark:bg-green-900/25',
+              intermediate: 'border-yellow-500 dark:border-yellow-400 bg-yellow-50  dark:bg-yellow-900/25',
+              advanced:     'border-red-500    dark:border-red-400    bg-red-50     dark:bg-red-900/25',
+            };
+            const selectedTextColors = {
+              beginner:     'text-green-700  dark:text-green-300',
+              intermediate: 'text-yellow-700 dark:text-yellow-300',
+              advanced:     'text-red-700    dark:text-red-300',
+            };
+            return (
+              <button
+                key={difficulty.id}
+                onClick={() => onDifficultySelect(difficulty.id)}
+                className={`
+                  p-4 rounded-xl border-2 transition-all duration-200 text-center relative
+                  ${isSelected
+                    ? `${selectedColors[difficulty.id]} shadow-md scale-[1.02]`
+                    : 'border-light-border dark:border-dark-border bg-white dark:bg-dark-muted hover:border-forest/50 dark:hover:border-sage/50 hover:bg-forest/5 dark:hover:bg-sage/5 hover:shadow-sm'
+                  }
+                `}
+              >
+                {isSelected && (
+                  <span className="absolute top-2.5 right-2.5 w-5 h-5 bg-forest dark:bg-sage rounded-full flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                )}
+                <div className="text-2xl mb-2">{difficulty.icon}</div>
+                <h4 className={`font-semibold text-sm transition-colors duration-200
+                  ${isSelected ? selectedTextColors[difficulty.id] : 'text-light-text dark:text-dark-text'}`}>
+                  {difficulty.title}
+                </h4>
+                <p className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1">
+                  {difficulty.description}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

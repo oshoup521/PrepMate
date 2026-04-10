@@ -129,7 +129,7 @@ export class InterviewService {
 
       // Create a more specific cache key that includes context hash to avoid repeated questions
       const contextHash = context ? Buffer.from(context).toString('base64').slice(0, 20) : 'default';
-      const cacheKey = `question:${role}:${difficulty}:${contextHash}:${Date.now()}`;
+      const cacheKey = `question:${role}:${difficulty}:${contextHash}`;
       
       // Skip caching if context contains previous questions to ensure uniqueness
       const shouldCache = !context || !context.includes('Previous questions');

@@ -12,6 +12,7 @@ import MockInterviewTemplates from './components/MockInterviewTemplates';
 import Progress from './components/Progress';
 import InterviewSession from './components/InterviewSession';
 import SessionHistory from './components/SessionHistory';
+import Profile from './components/Profile';
 import EmailVerification from './components/EmailVerification';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
@@ -37,9 +38,9 @@ function App() {
       <AuthProvider>
         <Router>
           <ScrollToTop />
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+          <div className="min-h-screen bg-light-bg dark:bg-dark-bg transition-colors duration-200">
             <Header />
-            <main className="container mx-auto px-4 py-8">
+            <main>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -87,38 +88,42 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
               </Routes>
             </main>
             
             {/* Toast Notifications */}
             <Toaster
-              position="top-right"
+              position="top-center"
               reverseOrder={false}
               gutter={8}
-              containerClassName=""
-              containerStyle={{}}
+              containerStyle={{ top: 72 }}
               toastOptions={{
-                // Define default options
-                className: '',
                 duration: 4000,
                 style: {
-                  background: '#363636',
-                  color: '#fff',
+                  maxWidth: '90vw',
+                  fontSize: '0.875rem',
                 },
-                // Default options for specific types
                 success: {
                   duration: 3000,
-                  theme: {
-                    primary: 'green',
-                    secondary: 'black',
+                  style: {
+                    background: '#537D5D',
+                    color: '#fff',
                   },
                 },
                 error: {
                   duration: 5000,
-                  theme: {
-                    primary: 'red',
-                    secondary: 'black',
+                  style: {
+                    background: '#dc2626',
+                    color: '#fff',
                   },
                 },
               }}

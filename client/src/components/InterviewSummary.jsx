@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './LoadingSpinner';
 
 const InterviewSummary = ({ summary, onReset }) => {
+  const navigate = useNavigate();
   if (!summary) return null;
 
   // Helper function to convert markdown-style text to JSX
@@ -109,20 +111,13 @@ const InterviewSummary = ({ summary, onReset }) => {
     });
   };
 
-  // Extract key data
-  const overallScore = summary.overallScore || summary.aiSummary?.overallScore || 0;
+  // Extract key data – coerce score to number (guard against 'N/A' strings)
+  const rawScore = summary.overallScore ?? summary.aiSummary?.overallScore ?? 0;
+  const overallScore = isNaN(Number(rawScore)) ? 0 : Number(rawScore);
   const questionsCount = summary.totalQuestions || summary.questions?.length || 0;
   const answersCount = summary.totalAnswers || summary.answers?.length || questionsCount;
   const role = summary.role || 'Interview';
   const difficulty = summary.difficulty || 'intermediate';
-
-  // Debug log to see what data we're getting
-  console.log('Summary data:', {
-    overallScore,
-    questionsCount,
-    answersCount,
-    summary
-  });
 
   // Helper function to safely extract and parse data
   const safeExtractArray = (data) => {
@@ -193,8 +188,8 @@ const InterviewSummary = ({ summary, onReset }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-28 lg:pb-16">
+    <div className="bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="max-w-2xl mx-auto space-y-6">
           
           {/* Header */}
@@ -217,7 +212,7 @@ const InterviewSummary = ({ summary, onReset }) => {
                     Your Score
                   </h2>
                   <div className={`text-5xl font-bold ${getScoreColor(overallScore)} mb-2`}>
-                    {questionsCount > 0 && answersCount > 0 ? `${overallScore}/10` : 'N/A'}
+                    {questionsCount > 0 && answersCount > 0 && overallScore > 0 ? `${overallScore}/10` : 'N/A'}
                   </div>
                   <p className={`text-lg font-semibold ${getScoreColor(overallScore)}`}>
                     {getPerformanceText(overallScore)}
@@ -399,11 +394,6 @@ const InterviewSummary = ({ summary, onReset }) => {
                     }
                   }
                   
-                  // Truncate if too long
-                  if (recommendationsText && recommendationsText.length > 200) {
-                    recommendationsText = `${recommendationsText.substring(0, 200)}...`;
-                  }
-                  
                   return renderMarkdownText(recommendationsText || 'Continue practicing to improve your interview skills.');
                 })()}
               </div>
@@ -420,7 +410,7 @@ const InterviewSummary = ({ summary, onReset }) => {
               Start New Interview
             </Button>
             <Button
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => navigate('/dashboard')}
               variant="outline"
               className="px-8 py-3 text-lg"
             >

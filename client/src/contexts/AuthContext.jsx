@@ -73,18 +73,16 @@ export const AuthProvider = ({ children }) => {
       if (response.data.access_token && response.data.user) {
         // Auto login flow
         const { access_token, user } = response.data;
-        
+
         localStorage.setItem('token', access_token);
         localStorage.setItem('user', JSON.stringify(user));
-        
+
         setToken(access_token);
         setCurrentUser(user);
-        
-        return user;
-      } else {
-        // Verification required flow - return the message to the Register component
-        return response.data;
       }
+
+      // Always return full response so Register.jsx can check for access_token
+      return response.data;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -106,30 +104,11 @@ export const AuthProvider = ({ children }) => {
         }
         return config;
       },
-      (error) => {
-        console.error('Request interceptor error:', error);
-        return Promise.reject(error);
-      }
-    );
-    
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        console.error('Response interceptor caught error:', error);
-        
-        // Check for specific auth-related errors
-        if (error.response && error.response.status === 401) {
-    
-          logout();
-        }
-        
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
     return () => {
       axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
     };
   }, [token]);
 

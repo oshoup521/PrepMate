@@ -1,20 +1,22 @@
-import { 
-  Body, 
-  Controller, 
-  Post, 
+import {
+  Body,
+  Controller,
+  Post,
   Get,
   Query,
-  HttpCode, 
-  HttpStatus, 
+  HttpCode,
+  HttpStatus,
   UnauthorizedException,
   ConflictException,
   BadRequestException,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LoginDto, RegisterDto, VerifyEmailDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -131,6 +133,18 @@ export class AuthController {
       }
       throw new BadRequestException('Password reset failed');
     }
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password (requires current password)' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Current password incorrect or same as new' })
+  @ApiBody({ type: ChangePasswordDto })
+  async changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 
   // Development-only endpoint for manually verifying users

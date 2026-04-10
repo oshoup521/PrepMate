@@ -30,15 +30,13 @@ const InterviewSession = () => {
   const [isEndingInterview, setIsEndingInterview] = useState(false);
   
   const chatContainerRef = useRef(null);
+  const scrollAreaRef = useRef(null);
 
-  // Helper function to scroll to bottom
-  const scrollToBottom = (delay = 100) => {
+  // Scroll the scrollable chat area to the bottom
+  const scrollToBottom = (delay = 80) => {
     setTimeout(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
       }
     }, delay);
   };
@@ -340,11 +338,9 @@ const InterviewSession = () => {
   // Render different phases
   if (phase === 'completed') {
     return (
-      <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+      <div className="bg-light-bg dark:bg-dark-bg">
         {showConfetti && <ConfettiEffect />}
-        <div className="container-responsive section-spacing">
-          <InterviewSummary summary={summary} onReset={resetInterview} />
-        </div>
+        <InterviewSummary summary={summary} onReset={resetInterview} />
       </div>
     );
   }
@@ -367,7 +363,7 @@ const InterviewSession = () => {
               <RoleSelector
                 selectedRole={selectedRole}
                 onRoleSelect={setSelectedRole}
-                difficulty={difficulty}
+                selectedDifficulty={difficulty}
                 onDifficultySelect={setDifficulty}
               />
               
@@ -400,11 +396,11 @@ const InterviewSession = () => {
   // Interview phase
   const questionCount = messages.filter(m => m.sender === 'ai').length;
   const answerCount = messages.filter(m => m.sender === 'user').length;
-  
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5 flex flex-col">
+    <div className="interview-layout bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5">
       {/* Fixed Header */}
-      <div className="sticky top-16 z-40 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md border-b border-forest/10 dark:border-sage/20 shadow-sm">
+      <div className="flex-shrink-0 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md border-b border-forest/10 dark:border-sage/20 shadow-sm z-40">
         <div className="container-responsive py-3">
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -454,17 +450,14 @@ const InterviewSession = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        <div className="container-responsive flex-1 flex flex-col">
-          <div className="max-w-5xl mx-auto flex-1 flex flex-col py-4">
-            
-            {/* Chat Messages Area */}
-            <div className="flex-1 overflow-hidden">
-              <div 
-                ref={chatContainerRef}
-                className="h-full overflow-y-auto px-4 py-8 space-y-8"
-              >
+      {/* Main Content Area – scrollable chat */}
+      <div className="interview-chat-area" ref={scrollAreaRef}>
+        <div className="container-responsive">
+          <div className="max-w-5xl mx-auto py-4">
+            <div
+              ref={chatContainerRef}
+              className="px-2 sm:px-4 space-y-6 pb-4"
+            >
                 {messages.length === 0 && (
                   <div className="text-center py-16">
                     <div className="w-16 h-16 bg-gradient-to-br from-forest to-sage rounded-full flex items-center justify-center mx-auto mb-4">
@@ -529,7 +522,7 @@ const InterviewSession = () => {
                                     Score: {message.evaluation.score}/10
                                   </div>
                                   {message.evaluation.feedback && (
-                                    <div className="text-xs text-light-text/60 dark:text-dark-text/60 max-w-xs truncate">
+                                    <div className="text-xs text-light-text/60 dark:text-dark-text/60 max-w-xs line-clamp-2">
                                       {message.evaluation.feedback}
                                     </div>
                                   )}
@@ -594,15 +587,14 @@ const InterviewSession = () => {
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Fixed Bottom Input Area */}
-      <div className="sticky bottom-0 z-40 bg-white/80 dark:bg-dark-bg/80 backdrop-blur-xl border-t border-forest/10 dark:border-sage/20 shadow-lg">
-        <div className="container-responsive py-4">
+      {/* Input Bar – sticks above virtual keyboard on mobile */}
+      <div className="interview-input-bar bg-white/90 dark:bg-dark-bg/90 backdrop-blur-xl border-t border-forest/10 dark:border-sage/20 shadow-lg z-40">
+        <div className="container-responsive py-3 sm:py-4">
           <div className="max-w-5xl mx-auto">
             <ChatInterface
               onSendMessage={handleAnswer}

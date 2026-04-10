@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const ChatInterface = ({ onSendMessage, isLoading }) => {
+const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
   const [message, setMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef(null);
 
+  const isDisabled = isLoading || disabled;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isDisabled) {
       onSendMessage(message.trim());
       setMessage('');
       setIsExpanded(false);
@@ -42,8 +44,8 @@ const ChatInterface = ({ onSendMessage, isLoading }) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isLoading ? "AI is processing..." : "Type your answer here... (Press Enter to send, Shift+Enter for new line)"}
-            disabled={isLoading}
+            placeholder={placeholder || (isDisabled ? "Please wait..." : "Type your answer here... (Press Enter to send, Shift+Enter for new line)")}
+            disabled={isDisabled}
             className={`
               w-full resize-none rounded-xl border transition-all duration-200
               py-3 px-4 pr-12 text-sm
@@ -69,10 +71,10 @@ const ChatInterface = ({ onSendMessage, isLoading }) => {
         {/* Send Button */}
         <button
           type="submit"
-          disabled={!message.trim() || isLoading || message.length > 1000}
+          disabled={!message.trim() || isDisabled || message.length > 1000}
           className={`
             transition-all duration-200 flex-shrink-0 rounded-xl font-medium
-            ${!message.trim() || isLoading || message.length > 1000
+            ${!message.trim() || isDisabled || message.length > 1000
               ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-forest to-forest/90 hover:from-forest/90 hover:to-forest text-white hover:shadow-lg hover:scale-105 active:scale-95'
             }
@@ -82,7 +84,7 @@ const ChatInterface = ({ onSendMessage, isLoading }) => {
             min-w-[120px]
           `}
         >
-          {isLoading ? (
+          {isDisabled ? (
             <>
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
