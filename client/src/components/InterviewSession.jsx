@@ -500,14 +500,12 @@ const InterviewSession = () => {
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-forest to-forest/80 dark:from-sage dark:to-sage/80 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                  <span className="text-white font-bold text-base">A</span>
                 </div>
                 <div>
                   <h1 className="text-lg sm:text-xl font-bold text-light-text dark:text-dark-text">
-                    {selectedRole} Interview
+                    Interview with Alex
                   </h1>
                   <div className="flex items-center space-x-3 text-xs text-light-text/60 dark:text-dark-text/60">
                     <span className="flex items-center">
@@ -567,16 +565,14 @@ const InterviewSession = () => {
             >
                 {messages.length === 0 && (
                   <div className="text-center py-16">
-                    <div className="w-16 h-16 bg-gradient-to-br from-forest to-sage rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
+                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                      <span className="text-white font-bold text-2xl">A</span>
                     </div>
                     <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-2">
-                      Interview Starting Soon
+                      Alex is getting ready...
                     </h3>
                     <p className="text-light-text/60 dark:text-dark-text/60">
-                      Your AI interviewer is preparing the first question...
+                      Your interviewer will be with you in just a moment.
                     </p>
                   </div>
                 )}
@@ -610,12 +606,12 @@ const InterviewSession = () => {
                               {message.isEvaluating ? (
                                 message.streamingFeedback ? (
                                   <div className="mt-1 text-left max-w-sm ml-auto bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
-                                    <div className="flex items-center gap-1.5 mb-1 text-forest dark:text-sage text-xs font-medium">
+                                    <div className="flex items-center gap-1.5 mb-1 text-indigo-500 dark:text-indigo-400 text-xs font-medium">
                                       <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                       </svg>
-                                      Evaluating...
+                                      Alex is reviewing your answer...
                                     </div>
                                     <p className="text-xs text-light-text/70 dark:text-dark-text/60 leading-relaxed">
                                       {message.streamingFeedback}
@@ -623,12 +619,12 @@ const InterviewSession = () => {
                                     </p>
                                   </div>
                                 ) : (
-                                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-xs">
-                                    <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-xs">
+                                    <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-indigo-500" fill="none" viewBox="0 0 24 24">
                                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    <span className="text-gray-600 dark:text-gray-300">Evaluating...</span>
+                                    <span className="text-indigo-600 dark:text-indigo-400">Alex is reviewing...</span>
                                   </div>
                                 )
                               ) : message.evaluation ? (
@@ -671,15 +667,14 @@ const InterviewSession = () => {
                       // AI Question - Left Side
                       <div className="flex justify-start">
                         <div className="flex items-start space-x-4 max-w-4xl">
-                          {/* AI Avatar */}
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
-                            <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
+                          {/* Alex Avatar */}
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+                            <span className="text-white font-bold text-lg">A</span>
                           </div>
-                          
-                          {/* AI Message */}
+
+                          {/* Alex Message */}
                           <div className="text-left">
+                            <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1 ml-1">Alex</div>
                             <div className="inline-block px-5 py-4 rounded-2xl shadow-md max-w-3xl bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 text-light-text dark:text-dark-text">
                               <p className="text-base leading-relaxed whitespace-pre-wrap">
                                 {message.text || (message.isStreaming ? '\u00A0' : '')}
@@ -687,9 +682,6 @@ const InterviewSession = () => {
                                   <span className="inline-block w-0.5 h-[1.1em] bg-forest dark:bg-sage ml-0.5 align-middle animate-pulse" />
                                 )}
                               </p>
-                            </div>
-                            <div className="text-xs text-light-text/40 dark:text-dark-text/40 mt-2 text-left">
-                              AI Interviewer
                             </div>
                           </div>
                         </div>
@@ -701,21 +693,20 @@ const InterviewSession = () => {
                 {isGeneratingQuestion && !messages.some(m => m.isStreaming) && (
                   <div className="flex justify-start mt-8">
                     <div className="flex items-start space-x-4 max-w-4xl">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                        <span className="text-white font-bold text-lg">A</span>
                       </div>
-                      <div className="bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 px-5 py-4 rounded-2xl shadow-md">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-forest dark:bg-sage rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div>
+                        <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1 ml-1">Alex</div>
+                        <div className="bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 px-5 py-4 rounded-2xl shadow-md">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                            </div>
+                            <span className="text-sm text-light-text/60 dark:text-dark-text/60 italic">Alex is thinking...</span>
                           </div>
-                          <span className="text-base text-light-text/70 dark:text-dark-text/70">
-                            Generating your next question...
-                          </span>
                         </div>
                       </div>
                     </div>

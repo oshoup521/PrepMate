@@ -160,12 +160,10 @@ export class InterviewService {
       const actualDifficulty = difficultyMap[difficulty] || 'intermediate-level';
       const contextPrompt = context ? `Context: ${context}\n` : '';
       
-      const prompt = `Generate a ${actualDifficulty} interview question for a ${role} position.
-                     ${contextPrompt}
-                     Make it specific, relevant, and appropriate for the role and difficulty level.
-                     ${context && context.includes('Previous questions') ? 'IMPORTANT: Avoid asking similar or duplicate questions. Create a unique question that explores different aspects of the role.' : ''}
-                     Format the response as JSON with 'question' and 'context' fields.
-                     The 'context' should include the ideal answer points the candidate should cover.`;
+      const isFirstQ = !context || !context.includes('Previous questions');
+      const prompt = isFirstQ
+        ? `You are Alex, a warm and professional ${role} interviewer. Start with a brief friendly greeting, then ask a ${actualDifficulty}-level interview question. Keep it under 4 sentences, plain text only. Format the response as JSON with 'question' and 'context' fields. The 'context' should include the ideal answer points.`
+        : `You are Alex, a warm and professional ${role} interviewer. ${contextPrompt}IMPORTANT: Avoid asking similar or duplicate questions. Start with a brief natural transition phrase then ask a new ${actualDifficulty}-level question. Plain text only. Format the response as JSON with 'question' and 'context' fields. The 'context' should include the ideal answer points.`;
 
       const text = await this.callAIWithTimeout<string>(prompt);
 
@@ -255,13 +253,12 @@ export class InterviewService {
 
       this.logger.debug(`Evaluating answer for role: ${role}`);
 
-      const prompt = `You are an expert ${role} interviewer evaluating a candidate's answer.
+      const prompt = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response.
                      Question: "${question}"
                      Candidate's answer: "${answer}"
-                     
-                     Evaluate the answer on technical accuracy, completeness, and clarity.
-                     Provide a score from 1-10 and specific, constructive feedback.
-                     Format the response as JSON with 'score', 'feedback', and 'improvement_areas' fields.`;
+
+                     Respond conversationally as Alex — acknowledge what they did well, gently note gaps, stay encouraging. Sound like a real person, not a report card.
+                     Format the response as JSON with 'score' (integer 1-10), 'feedback' (2-4 conversational sentences), and 'improvement_areas' (1-2 sentences of friendly advice) fields.`;
 
       const text = await this.callAIWithTimeout<string>(prompt);
 
@@ -335,9 +332,19 @@ export class InterviewService {
         ? 'IMPORTANT: Avoid similar or duplicate questions. Create a unique question exploring different aspects of the role.\n'
         : '';
 
-    const prompt = `Generate a ${actualDifficulty} interview question for a ${role} position.
-${contextPrompt}${uniquenessHint}Write the question as plain text only — no JSON, no markdown, no extra formatting.
-After the question text, on a new line write exactly "---" and then write the ideal answer context points.`;
+    const isFirstQuestion = !context || !context.includes('Previous questions');
+
+    const prompt = isFirstQuestion
+      ? `You are Alex, a warm and professional ${role} interviewer. You are encouraging, empathetic, and conversational — not robotic. You make candidates feel comfortable while still being thorough.
+
+Start with a brief, friendly one-sentence greeting, then naturally flow into your first ${actualDifficulty}-level interview question. Keep the total response under 4 sentences. Write plain text only — no JSON, no markdown, no bullet points.
+
+After the question, on a new line write exactly "---" and then write the ideal answer key points (for internal scoring use only).`
+      : `You are Alex, a warm and professional ${role} interviewer continuing a live interview session.
+
+${contextPrompt}${uniquenessHint}Ask a new ${actualDifficulty}-level question. Start with a very brief natural transition phrase (e.g. "Good.", "Interesting.", "Let's shift gears." — keep it to 2-5 words), then ask your question. Total response should be 1-3 sentences. Write plain text only — no JSON, no markdown, no bullet points.
+
+After the question, on a new line write exactly "---" and then write the ideal answer key points (for internal scoring use only).`;
 
     try {
       const result = await this.model.generateContentStream(prompt);
@@ -379,15 +386,18 @@ After the question text, on a new line write exactly "---" and then write the id
     if (!answer?.trim()) throw new Error('Answer is required');
     if (answer.length > 5000) throw new Error('Answer must be less than 5000 characters');
 
-    const prompt = `You are an expert ${role} interviewer evaluating a candidate's answer.
-Question: "${question}"
-Candidate's answer: "${answer}"
+    const prompt = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response in a live interview.
 
-Evaluate on technical accuracy, completeness, and clarity. Follow this exact output format:
+Question asked: "${question}"
+Candidate's response: "${answer}"
+
+Respond as Alex would in a real human interview — naturally and conversationally. Acknowledge what they did well (even briefly), gently note what was missing if anything, and stay encouraging. Sound like a real person giving feedback, not a report card. Keep it to 2-4 sentences.
+
+Use this EXACT output format — do not deviate:
 Line 1: SCORE: [a single integer from 1 to 10]
-Lines 2 onwards: [your detailed feedback as plain prose, 2-4 sentences]
+Lines 2 onwards: [2-4 sentences of warm, conversational feedback as Alex]
 Then a line with exactly "---"
-Then: [improvement areas, 1-3 sentences]`;
+Then: [1-2 sentences of friendly advice on what to study or improve, phrased as genuine guidance]`;
 
     try {
       const result = await this.model.generateContentStream(prompt);
