@@ -15,7 +15,8 @@
       "Bash(cmd /c \"taskkill /PID 18616 /F\")",
       "Bash(cmd /c \"taskkill /PID 18616 /F 2>&1\")",
       "Bash(cmd /c \"netstat -ano | findstr :5173 | findstr LISTENING\")",
-      "Bash(cmd /c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr :5173 ^| findstr LISTENING'\\) do taskkill /PID %a /F\")"
+      "Bash(cmd /c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr :5173 ^| findstr LISTENING'\\) do taskkill /PID %a /F\")",
+      "Bash(npx vite:*)"
     ]
   }
 }
