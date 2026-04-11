@@ -596,18 +596,18 @@ const LandingPage = () => {
 
           <div
             ref={rolesRef}
-            className="flex flex-wrap gap-3 justify-center"
+            className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-3"
           >
             {ROLES.map((r, i) => (
               <div
                 key={r.label}
-                className={`flex items-center gap-2.5 bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl px-5 py-3.5 hover:border-forest dark:hover:border-sage hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-default ${
+                className={`flex items-center justify-center sm:justify-start gap-2 sm:gap-2.5 bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl px-3 sm:px-5 py-3.5 hover:border-forest dark:hover:border-sage hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-default last:col-span-2 sm:last:col-span-1 ${
                   rolesInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
                 style={{ transitionDelay: `${i * 50}ms`, transitionProperty: 'opacity, transform, box-shadow, border-color' }}
               >
-                <span className="text-xl">{r.icon}</span>
-                <span className="font-medium text-sm">{r.label}</span>
+                <span className="text-lg sm:text-xl leading-none flex-shrink-0">{r.icon}</span>
+                <span className="font-medium text-xs sm:text-sm whitespace-nowrap">{r.label}</span>
               </div>
             ))}
           </div>
