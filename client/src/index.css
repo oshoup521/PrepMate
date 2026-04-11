@@ -60,7 +60,13 @@ html {
   }
   
   a {
-    @apply text-forest dark:text-sage hover:text-olive dark:hover:text-sand transition-colors duration-200;
+    @apply transition-colors duration-200;
+  }
+  a:not([class*="bg-"]):not([class*="btn"]) {
+    @apply text-forest dark:text-sage;
+  }
+  a:not([class*="bg-"]):not([class*="btn"]):hover {
+    @apply text-olive dark:text-sand;
   }
   
   button {

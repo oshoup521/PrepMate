@@ -932,17 +932,17 @@ const LandingPage = () => {
             <div>
               <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Account</h4>
               <ul className="space-y-2.5 text-sm">
-                <li><Link to="/register" className="hover:text-white transition-colors">Sign Up Free</Link></li>
-                <li><Link to="/login" className="hover:text-white transition-colors">Sign In</Link></li>
-                <li><Link to="/forgot-password" className="hover:text-white transition-colors">Reset Password</Link></li>
+                <li><Link to="/register" className="text-white/55 hover:text-white transition-colors">Sign Up Free</Link></li>
+                <li><Link to="/login" className="text-white/55 hover:text-white transition-colors">Sign In</Link></li>
+                <li><Link to="/forgot-password" className="text-white/55 hover:text-white transition-colors">Reset Password</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Legal</h4>
               <ul className="space-y-2.5 text-sm">
-                <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-white/55 hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="text-white/55 hover:text-white transition-colors">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>
