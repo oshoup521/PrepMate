@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Post, Request, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, Request, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PaymentService } from './payment.service';
@@ -11,33 +11,25 @@ import { CreateOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  @ApiOperation({ summary: 'Create a Razorpay order' })
+  @ApiOperation({ summary: 'Create a Razorpay order for a session pack' })
   @ApiResponse({ status: 201, description: 'Order created' })
   @Post('create-order')
   @HttpCode(HttpStatus.CREATED)
   createOrder(@Body() dto: CreateOrderDto) {
-    return this.paymentService.createOrder(dto.plan);
+    return this.paymentService.createOrder(dto.pack);
   }
 
-  @ApiOperation({ summary: 'Verify payment and upgrade user to Pro' })
-  @ApiResponse({ status: 200, description: 'Payment verified and plan upgraded' })
+  @ApiOperation({ summary: 'Verify payment and add session credits' })
+  @ApiResponse({ status: 200, description: 'Payment verified and credits added' })
   @Post('verify')
   @HttpCode(HttpStatus.OK)
   verify(@Request() req, @Body() dto: VerifyPaymentDto) {
-    return this.paymentService.verifyAndUpgrade(
+    return this.paymentService.verifyAndAddCredits(
       req.user.id,
       dto.razorpay_order_id,
       dto.razorpay_payment_id,
       dto.razorpay_signature,
-      dto.plan,
+      dto.pack,
     );
-  }
-
-  @ApiOperation({ summary: 'Cancel Pro subscription and revert to free plan' })
-  @ApiResponse({ status: 200, description: 'Subscription cancelled' })
-  @Delete('subscription')
-  @HttpCode(HttpStatus.OK)
-  cancelSubscription(@Request() req) {
-    return this.paymentService.cancelSubscription(req.user.id);
   }
 }

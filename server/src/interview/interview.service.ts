@@ -460,14 +460,12 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
         throw new Error('Description must be less than 500 characters');
       }
 
-      // Plan gating: enforce free limit (expiry is handled globally by SubscriptionCheckInterceptor)
+      // Credit gating: each session costs 1 credit
       const user = await this.usersService.findById(userId);
-      if (user && user.plan === 'free') {
-        const sessionCount = await this.interviewSessionRepository.count({ where: { userId } });
-        if (sessionCount >= 5) {
-          throw new ForbiddenException('Free plan limit reached. Upgrade to Pro for unlimited sessions.');
-        }
+      if (!user || user.sessionCredits <= 0) {
+        throw new ForbiddenException('No session credits remaining. Purchase a pack to continue.');
       }
+      await this.usersService.deductSessionCredit(userId);
 
       this.logger.debug(`Creating session for user: ${userId}, role: ${jobRole}, difficulty: ${difficulty}`);      const session = this.interviewSessionRepository.create({
         userId,

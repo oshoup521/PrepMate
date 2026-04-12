@@ -43,6 +43,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         isEmailVerified: user.isEmailVerified,
+        sessionCredits: user.sessionCredits ?? 0,
       },
     };
   }  async register(email: string, name: string, password: string) {
@@ -71,6 +72,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         isEmailVerified: true,
+        sessionCredits: user.sessionCredits ?? 3,
       },
       message: 'Registration successful!',
     };

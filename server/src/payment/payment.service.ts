@@ -4,8 +4,13 @@ import * as crypto from 'crypto';
 import Razorpay = require('razorpay');
 import { UsersService } from '../users/users.service';
 
-const MONTHLY_AMOUNT_PAISE = 29900; // ₹299
-const ANNUAL_AMOUNT_PAISE = 322900; // ₹3,229
+export const SESSION_PACKS = {
+  starter: { amountPaise: 14900, sessions: 5,  label: 'Starter' },
+  popular: { amountPaise: 29900, sessions: 15, label: 'Popular' },
+  power:   { amountPaise: 49900, sessions: 30, label: 'Power'   },
+} as const;
+
+export type PackKey = keyof typeof SESSION_PACKS;
 
 @Injectable()
 export class PaymentService {
@@ -22,22 +27,22 @@ export class PaymentService {
     });
   }
 
-  async createOrder(plan: 'monthly' | 'annual') {
-    const amount = plan === 'annual' ? ANNUAL_AMOUNT_PAISE : MONTHLY_AMOUNT_PAISE;
+  async createOrder(pack: PackKey) {
+    const { amountPaise, sessions, label } = SESSION_PACKS[pack];
     const order = await this.razorpay.orders.create({
-      amount,
+      amount: amountPaise,
       currency: 'INR',
-      receipt: `prepmate_${plan}_${Date.now()}`,
+      receipt: `prepmate_${pack}_${Date.now()}`,
     });
-    return { orderId: order.id, amount: order.amount, currency: order.currency };
+    return { orderId: order.id, amount: order.amount, currency: order.currency, sessions, label };
   }
 
-  async verifyAndUpgrade(
+  async verifyAndAddCredits(
     userId: string,
     razorpay_order_id: string,
     razorpay_payment_id: string,
     razorpay_signature: string,
-    plan: 'monthly' | 'annual',
+    pack: PackKey,
   ) {
     const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET') ?? '';
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
@@ -51,14 +56,9 @@ export class PaymentService {
       throw new BadRequestException('Payment verification failed: invalid signature');
     }
 
-    await this.usersService.upgradeToPro(userId, plan, razorpay_payment_id, razorpay_order_id);
-    this.logger.log(`User ${userId} upgraded to pro (${plan})`);
-    return { success: true };
-  }
-
-  async cancelSubscription(userId: string) {
-    await this.usersService.cancelSubscription(userId);
-    this.logger.log(`Subscription cancelled for user ${userId}`);
-    return { success: true, message: 'Subscription cancelled successfully' };
+    const { sessions } = SESSION_PACKS[pack];
+    await this.usersService.addSessionCredits(userId, sessions, razorpay_payment_id, razorpay_order_id);
+    this.logger.log(`User ${userId} purchased ${pack} pack (+${sessions} sessions)`);
+    return { success: true, sessionsAdded: sessions };
   }
 }

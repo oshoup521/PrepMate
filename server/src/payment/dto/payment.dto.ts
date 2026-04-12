@@ -2,9 +2,9 @@ import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateOrderDto {
-  @ApiProperty({ enum: ['monthly', 'annual'] })
-  @IsIn(['monthly', 'annual'])
-  plan: 'monthly' | 'annual';
+  @ApiProperty({ enum: ['starter', 'popular', 'power'] })
+  @IsIn(['starter', 'popular', 'power'])
+  pack: 'starter' | 'popular' | 'power';
 }
 
 export class VerifyPaymentDto {
@@ -23,7 +23,7 @@ export class VerifyPaymentDto {
   @IsNotEmpty()
   razorpay_signature: string;
 
-  @ApiProperty({ enum: ['monthly', 'annual'] })
-  @IsIn(['monthly', 'annual'])
-  plan: 'monthly' | 'annual';
+  @ApiProperty({ enum: ['starter', 'popular', 'power'] })
+  @IsIn(['starter', 'popular', 'power'])
+  pack: 'starter' | 'popular' | 'power';
 }

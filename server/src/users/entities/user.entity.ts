@@ -34,20 +34,14 @@ export class User {
   @Exclude()
   passwordResetExpires: Date | null;
 
-  @Column({ default: 'free' })
-  plan: 'free' | 'pro';
-
-  @Column({ type: 'timestamp', nullable: true })
-  planExpiresAt: Date | null;
+  @Column({ default: 3 })
+  sessionCredits: number;
 
   @Column({ type: 'text', nullable: true })
   razorpayPaymentId: string | null;
 
   @Column({ type: 'text', nullable: true })
   razorpayOrderId: string | null;
-
-  @Column({ default: 'monthly' })
-  billingCycle: 'monthly' | 'annual';
 
   @CreateDateColumn()
   createdAt: Date;

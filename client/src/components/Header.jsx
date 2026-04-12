@@ -119,11 +119,9 @@ const Header = () => {
                       <p className="text-sm font-medium text-light-text dark:text-dark-text">
                         {currentUser.name}
                       </p>
-                      {currentUser.plan === 'pro' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white leading-none tracking-wide">
-                          PRO
-                        </span>
-                      )}
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage leading-none tracking-wide">
+                        {currentUser.sessionCredits ?? 0} left
+                      </span>
                     </div>
                     <p className="text-xs text-light-text/60 dark:text-dark-text/60">
                       {currentUser.email}
@@ -259,18 +257,12 @@ const Header = () => {
                   <p className="font-medium text-light-text dark:text-dark-text truncate">
                     {currentUser.name}
                   </p>
-                  {currentUser.plan === 'pro' ? (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white leading-none tracking-wide flex-shrink-0">
-                      PRO
-                    </span>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.preventDefault(); closeMenu(); navigate('/upgrade'); }}
-                      className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-forest/40 text-forest dark:text-sage leading-none tracking-wide flex-shrink-0 hover:bg-forest/10 transition-colors"
-                    >
-                      Free
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => { e.preventDefault(); closeMenu(); navigate('/upgrade'); }}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage leading-none tracking-wide flex-shrink-0 hover:bg-forest/20 transition-colors"
+                  >
+                    {currentUser.sessionCredits ?? 0} sessions
+                  </button>
                 </div>
                 <p className="text-sm text-light-text/60 dark:text-dark-text/60 truncate">
                   {currentUser.email}

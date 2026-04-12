@@ -102,40 +102,22 @@ export class UsersService {
     });
   }
 
-  async expirePlan(userId: string): Promise<void> {
-    await this.usersRepository.update(userId, { plan: 'free', planExpiresAt: null });
-  }
-
-  async upgradeToPro(
+  async addSessionCredits(
     userId: string,
-    billingCycle: 'monthly' | 'annual',
+    credits: number,
     razorpayPaymentId: string,
     razorpayOrderId: string,
   ): Promise<void> {
-    const now = new Date();
-    const planExpiresAt = new Date(now);
-    if (billingCycle === 'annual') {
-      planExpiresAt.setDate(planExpiresAt.getDate() + 365);
-    } else {
-      planExpiresAt.setDate(planExpiresAt.getDate() + 30);
-    }
+    const user = await this.findById(userId);
+    const current = user?.sessionCredits ?? 0;
     await this.usersRepository.update(userId, {
-      plan: 'pro',
-      billingCycle,
-      planExpiresAt,
+      sessionCredits: current + credits,
       razorpayPaymentId,
       razorpayOrderId,
     });
   }
 
-  async cancelSubscription(userId: string): Promise<void> {
-    await this.usersRepository.update(userId, {
-      plan: 'free',
-      planExpiresAt: null,
-      billingCycle: 'monthly',
-      razorpayPaymentId: null,
-      razorpayOrderId: null,
-    });
-    this.logger.log(`Subscription cancelled for user ${userId}`);
+  async deductSessionCredit(userId: string): Promise<void> {
+    await this.usersRepository.decrement({ id: userId }, 'sessionCredits', 1);
   }
 }

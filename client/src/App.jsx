@@ -18,7 +18,6 @@ import EmailVerification from './components/EmailVerification';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
-import EmailTestInfo from './components/EmailTestInfo';
 import TermsOfService from './components/TermsOfService';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import InstallPWA from './components/InstallPWA';
@@ -118,7 +117,6 @@ function AppLayout() {
           error: { duration: 5000, style: { background: '#dc2626', color: '#fff' } },
         }}
       />
-      <EmailTestInfo />
       <InstallPWA />
     </div>
   );

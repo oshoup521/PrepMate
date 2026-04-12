@@ -9,6 +9,7 @@ import interviewService from '../services/interviewService';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
 import { useQuestionTimer } from '../hooks/useQuestionTimer';
+import { useAuth } from '../contexts/AuthContext';
 
 const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -16,6 +17,7 @@ const InterviewSession = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionId = searchParams.get('sessionId');
+  const { refreshUser } = useAuth();
   
   // Core state
   const [phase, setPhase] = useState('setup'); // 'setup', 'interview', 'completed'
@@ -155,6 +157,7 @@ const InterviewSession = () => {
       const session = await interviewService.createSession(selectedRole, apiDifficulty);
       setCurrentSession(session);
       setPhase('interview');
+      refreshUser();
       
       await generateQuestion();
       

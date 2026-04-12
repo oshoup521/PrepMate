@@ -250,14 +250,6 @@ export const interviewService = {
     }
   },
 
-  cancelSubscription: async () => {
-    try {
-      const response = await apiClient.delete('/payment/subscription');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 };
 
 export default interviewService;

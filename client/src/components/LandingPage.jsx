@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
@@ -47,7 +47,7 @@ const FEATURES = [
   },
   {
     icon: '🎤',
-    title: 'Voice Input (Pro)',
+    title: 'Voice Input',
     desc: 'Answer questions by speaking naturally — just like a real interview. Powered by speech-to-text for hands-free practice.',
   },
 ];
@@ -125,7 +125,7 @@ const FAQS = [
   },
   {
     q: 'How does the free plan work?',
-    a: 'The free plan gives you 5 complete interview sessions — no credit card required. Each session includes AI-generated questions and detailed feedback so you can start improving right away.',
+    a: 'You get 3 complete interview sessions free — no credit card required. Each session has 10 questions with full AI feedback. Once you use them up, buy a session pack to keep going.',
   },
   {
     q: 'How does the AI evaluate my answers?',
@@ -136,8 +136,8 @@ const FAQS = [
     a: "We accept all major credit/debit cards, UPI, net banking, and digital wallets via Razorpay — India's most trusted payment gateway.",
   },
   {
-    q: 'Can I cancel my Pro subscription anytime?',
-    a: 'Yes, cancel at any time from your profile. Your Pro access continues until the end of your current billing period. No questions asked, no penalties.',
+    q: 'Do session credits expire?',
+    a: 'No — your credits never expire. Buy a pack whenever you need it and use it at your own pace. No subscriptions, no monthly pressure.',
   },
   {
     q: 'Is my data secure?',
@@ -176,7 +176,6 @@ const LandingPage = () => {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [billingAnnual, setBillingAnnual] = useState(true);
   const [openFAQ, setOpenFAQ] = useState(null);
   const [chatIdx, setChatIdx] = useState(0);
   const [phase, setPhase] = useState(0); // 0=question, 1=answer, 2=score
@@ -327,7 +326,7 @@ const LandingPage = () => {
       </nav>
 
       {/* ─── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden bg-gradient-to-br from-forest-900 via-forest-800 to-olive-700">
+      <section className="relative flex items-center pt-16 overflow-hidden bg-gradient-to-br from-forest-900 via-forest-800 to-olive-700">
         {/* Dot grid pattern */}
         <div
           className="absolute inset-0 opacity-10"
@@ -340,28 +339,28 @@ const LandingPage = () => {
         <div className="absolute top-24 right-16 w-80 h-80 bg-sage/15 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-24 left-8 w-56 h-56 bg-sand/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 w-full">
           <div className="grid lg:grid-cols-2 gap-14 items-center">
 
             {/* Left — Copy */}
             <div className="text-white">
               {/* AI Badge */}
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium text-white/90 mb-6">
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium text-white/90 mb-4">
                 <span className="w-2 h-2 bg-sage rounded-full animate-pulse" />
                 Powered by Google Gemini AI
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 tracking-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 tracking-tight">
                 Ace Your Next
                 <span className="block text-sage mt-1">Tech Interview</span>
                 <span className="block text-white/80 text-3xl sm:text-4xl lg:text-5xl font-bold mt-1">with AI-Powered Practice</span>
               </h1>
 
-              <p className="text-lg text-white/75 mb-8 leading-relaxed max-w-lg">
+              <p className="text-lg text-white/75 mb-6 leading-relaxed max-w-lg">
                 PrepMate simulates real interviews with AI-generated questions, instant scored feedback, and detailed performance analytics. Practice smarter. Land faster.
               </p>
 
-              <div className="flex flex-wrap gap-4 mb-10">
+              <div className="flex flex-wrap gap-4 mb-6">
                 <Link
                   to="/register"
                   className="inline-flex items-center gap-2 bg-sage text-forest-900 font-bold px-8 py-3.5 rounded-xl hover:bg-sage-500 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-base"
@@ -384,7 +383,7 @@ const LandingPage = () => {
 
               {/* Trust signals */}
               <div className="flex flex-wrap gap-5 text-white/60 text-sm">
-                {['Free forever plan', 'No credit card needed', '5 free sessions'].map(t => (
+                {['3 free sessions', 'No credit card needed', 'Credits never expire'].map(t => (
                   <div key={t} className="flex items-center gap-1.5">
                     <svg className="w-4 h-4 text-sage flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -478,13 +477,12 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                {/* Floating labels */}
-                <div className="absolute -top-3 -right-3 bg-sage text-forest-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce-slow whitespace-nowrap">
-                  Live AI Feedback
-                </div>
-                <div className="absolute -bottom-3 -left-3 bg-white dark:bg-dark-muted text-forest dark:text-sage text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-light-border dark:border-dark-border whitespace-nowrap">
-                  9 Roles Available
-                </div>
+                {/* Decorative bubbles */}
+                <div className="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-sage/40 blur-sm animate-pulse-slow" />
+                <div className="absolute -bottom-5 -right-5 w-14 h-14 rounded-full bg-sand/30 blur-sm animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
+                <div className="absolute top-1/2 -right-6 w-5 h-5 rounded-full bg-white/20 animate-bounce-slow" />
+                <div className="absolute top-1/4 -left-5 w-4 h-4 rounded-full bg-sage/50 animate-bounce-slow" style={{ animationDelay: '1s' }} />
+                <div className="absolute -bottom-2 left-1/3 w-3 h-3 rounded-full bg-white/30 animate-pulse-slow" style={{ animationDelay: '0.5s' }} />
               </div>
             </div>
           </div>
@@ -504,7 +502,7 @@ const LandingPage = () => {
           {[
             { val: '9', label: 'Tech Roles' },
             { val: '3', label: 'Difficulty Levels' },
-            { val: '∞', label: 'Practice Sessions (Pro)' },
+            { val: '₹20', label: 'Per Session (Popular Pack)' },
             { val: 'AI', label: 'Powered by Gemini' },
           ].map(s => (
             <div key={s.label}>
@@ -631,142 +629,123 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="text-sm font-bold text-forest dark:text-sage uppercase tracking-widest mb-3 block">Pricing</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 tracking-tight">Simple, Transparent Pricing</h2>
-            <p className="text-light-text/60 dark:text-dark-text/55 max-w-xl mx-auto text-lg mb-8 leading-relaxed">
-              Start free. Upgrade when you're ready to go all-in on your interview prep.
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 tracking-tight">Pay Per Session. No Subscriptions.</h2>
+            <p className="text-light-text/60 dark:text-dark-text/55 max-w-xl mx-auto text-lg leading-relaxed">
+              Start with 3 free sessions. Buy more when you need them. Credits never expire.
             </p>
-
-            {/* Billing toggle */}
-            <div className="inline-flex items-center bg-white dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl p-1 shadow-sm">
-              <button
-                onClick={() => setBillingAnnual(false)}
-                className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  !billingAnnual ? 'bg-forest text-white shadow-sm' : 'text-light-text/60 dark:text-dark-text/60 hover:text-light-text dark:hover:text-dark-text'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillingAnnual(true)}
-                className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                  billingAnnual ? 'bg-forest text-white shadow-sm' : 'text-light-text/60 dark:text-dark-text/60 hover:text-light-text dark:hover:text-dark-text'
-                }`}
-              >
-                Annual
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${billingAnnual ? 'bg-sage text-forest-900' : 'bg-forest-100 dark:bg-forest/20 text-forest dark:text-sage'}`}>
-                  Save 10%
-                </span>
-              </button>
-            </div>
           </div>
 
           <div
             ref={pricingRef}
-            className={`grid md:grid-cols-2 gap-8 max-w-3xl mx-auto transition-all duration-700 ${pricingInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+            className={`transition-all duration-700 ${pricingInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
           >
-            {/* Free */}
-            <div className="bg-white dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-2xl p-8 flex flex-col">
-              <div className="mb-6">
-                <h3 className="font-black text-2xl mb-1">Free</h3>
-                <p className="text-light-text/55 dark:text-dark-text/55 text-sm mb-5">Perfect to get started</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-5xl font-black">₹0</span>
-                  <span className="text-light-text/50 dark:text-dark-text/50 mb-2 text-sm">/ forever</span>
-                </div>
+            {/* Free tier */}
+            <div className="max-w-sm mx-auto mb-6 bg-white dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-2xl p-6 text-center">
+              <h3 className="font-black text-xl mb-1">Free</h3>
+              <p className="text-light-text/55 dark:text-dark-text/55 text-sm mb-3">Try before you buy</p>
+              <div className="flex items-end justify-center gap-1 mb-4">
+                <span className="text-4xl font-black">₹0</span>
+                <span className="text-light-text/50 dark:text-dark-text/50 mb-1 text-sm">· 3 sessions</span>
               </div>
-
-              <ul className="space-y-3.5 mb-8 text-sm flex-1">
-                {[
-                  { text: '5 interview sessions', ok: true },
-                  { text: 'Basic job roles', ok: true },
-                  { text: 'Text-based answers', ok: true },
-                  { text: 'Unlimited sessions', ok: false },
-                  { text: 'AI answer evaluation', ok: false },
-                  { text: 'Performance analytics', ok: false },
-                  { text: 'Voice input', ok: false },
-                ].map(item => (
-                  <li key={item.text} className={`flex items-center gap-3 ${!item.ok ? 'opacity-35' : ''}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${item.ok ? 'bg-forest/12 text-forest dark:bg-forest/30 dark:text-sage' : 'bg-light-border dark:bg-dark-border'}`}>
-                      {item.ok ? (
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3 h-3 text-light-text/30 dark:text-dark-text/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </span>
-                    {item.text}
-                  </li>
-                ))}
-              </ul>
-
               <Link
                 to="/register"
-                className="block text-center py-3.5 px-6 rounded-xl border-2 border-forest dark:border-sage text-forest dark:text-sage font-bold hover:bg-forest hover:text-white dark:hover:bg-sage dark:hover:text-forest-900 transition-all duration-200"
+                className="block text-center py-3 px-6 rounded-xl border-2 border-forest dark:border-sage text-forest dark:text-sage font-bold hover:bg-forest hover:text-white dark:hover:bg-sage dark:hover:text-forest-900 transition-all duration-200"
               >
                 Get Started Free
               </Link>
             </div>
 
-            {/* Pro */}
-            <div className="relative bg-forest rounded-2xl p-8 text-white overflow-hidden flex flex-col shadow-2xl shadow-forest/30">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+            {/* Session packs */}
+            <div className="grid sm:grid-cols-3 gap-5 max-w-4xl mx-auto">
+              {[
+                { key: 'starter', label: 'Starter',  sessions: 5,  price: 149, perSession: 30,  badge: null,          desc: 'Try it out' },
+                { key: 'popular', label: 'Popular',  sessions: 15, price: 299, perSession: 20,  badge: 'Most Popular', desc: 'Best value' },
+                { key: 'power',   label: 'Power',    sessions: 30, price: 499, perSession: 17,  badge: 'Best Deal',    desc: 'Serious prep' },
+              ].map(pack => (
+                <div
+                  key={pack.key}
+                  className={`relative rounded-2xl p-6 flex flex-col ${
+                    pack.badge === 'Most Popular'
+                      ? 'bg-forest text-white shadow-2xl shadow-forest/30'
+                      : 'bg-white dark:bg-dark-bg border border-light-border dark:border-dark-border'
+                  }`}
+                >
+                  {pack.badge && (
+                    <div className="absolute -top-3.5 inset-x-0 flex justify-center">
+                      <span className={`px-4 py-1 text-[11px] font-black rounded-full uppercase tracking-wider shadow-md ${
+                        pack.badge === 'Most Popular' ? 'bg-sage text-forest-900' : 'bg-forest text-white'
+                      }`}>
+                        {pack.badge}
+                      </span>
+                    </div>
+                  )}
 
-              <div className="absolute top-4 right-4 bg-sage text-forest-900 text-xs font-black px-3 py-1 rounded-full shadow">
-                Most Popular
-              </div>
+                  <div className="mb-4">
+                    <h3 className={`font-black text-xl mb-0.5 ${pack.badge === 'Most Popular' ? 'text-white' : 'text-light-text dark:text-dark-text'}`}>
+                      {pack.label}
+                    </h3>
+                    <p className={`text-sm ${pack.badge === 'Most Popular' ? 'text-white/65' : 'text-light-text/55 dark:text-dark-text/55'}`}>
+                      {pack.desc}
+                    </p>
+                    <div className="flex items-end gap-1 mt-3">
+                      <span className={`text-4xl font-black ${pack.badge === 'Most Popular' ? 'text-white' : 'text-light-text dark:text-dark-text'}`}>
+                        ₹{pack.price}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${pack.badge === 'Most Popular' ? 'text-white/55' : 'text-light-text/40 dark:text-dark-text/40'}`}>
+                      {pack.sessions} sessions · ₹{pack.perSession}/session
+                    </p>
+                  </div>
 
-              <div className="relative mb-6">
-                <h3 className="font-black text-2xl mb-1">Pro</h3>
-                <p className="text-white/65 text-sm mb-5">For serious job seekers</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-5xl font-black">₹{billingAnnual ? '269' : '299'}</span>
-                  <span className="text-white/55 mb-2 text-sm">/ month</span>
+                  <ul className="space-y-2.5 mb-6 flex-1 text-sm">
+                    {[
+                      `${pack.sessions} interview sessions`,
+                      'All roles & difficulty levels',
+                      'AI answer evaluation',
+                      'Performance summaries',
+                      'Voice input',
+                      'Credits never expire',
+                    ].map(f => (
+                      <li key={f} className={`flex items-center gap-2.5 ${pack.badge === 'Most Popular' ? 'text-white/90' : 'text-light-text dark:text-dark-text'}`}>
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${pack.badge === 'Most Popular' ? 'bg-sage/25' : 'bg-forest/10 dark:bg-forest/20'}`}>
+                          <svg className={`w-2.5 h-2.5 ${pack.badge === 'Most Popular' ? 'text-sage' : 'text-forest dark:text-sage'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    to="/register"
+                    className={`block text-center py-3.5 px-6 rounded-xl font-black transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 ${
+                      pack.badge === 'Most Popular'
+                        ? 'bg-sage text-forest-900 hover:bg-sage-500'
+                        : 'bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage hover:bg-forest hover:text-white'
+                    }`}
+                  >
+                    Get {pack.sessions} sessions · ₹{pack.price}
+                  </Link>
                 </div>
-                {billingAnnual && (
-                  <p className="text-white/55 text-xs mt-1.5">₹3,229 billed annually · Save ₹359/year</p>
-                )}
-              </div>
-
-              <ul className="relative space-y-3.5 mb-8 text-sm flex-1">
-                {[
-                  'Unlimited interview sessions',
-                  'All 9 roles & all difficulty levels',
-                  'AI-powered answer evaluation',
-                  'Detailed performance summaries',
-                  'Session history & analytics',
-                  'Voice input support',
-                  'Priority support',
-                ].map(item => (
-                  <li key={item} className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-sage/25 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-3 h-3 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                to="/register"
-                className="relative block text-center py-3.5 px-6 rounded-xl bg-sage text-forest-900 font-black hover:bg-sage-500 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-              >
-                Start Free, Upgrade Anytime
-              </Link>
+              ))}
             </div>
           </div>
 
-          <p className="text-center text-sm text-light-text/45 dark:text-dark-text/45 mt-7 flex items-center justify-center gap-2">
-            <svg className="w-4 h-4 text-forest dark:text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Payments secured by Razorpay · Cancel anytime · No hidden fees
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-7">
+            {[
+              { icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', label: 'Secured by Razorpay' },
+              { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Credits never expire' },
+              { icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636', label: 'No subscriptions' },
+            ].map(({ icon, label }) => (
+              <span key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs text-light-text/60 dark:text-dark-text/50 font-medium">
+                <svg className="w-3.5 h-3.5 text-forest dark:text-sage flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+                </svg>
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -902,59 +881,44 @@ const LandingPage = () => {
       </section>
 
       {/* ─── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="bg-forest-900 text-white/55 py-14">
+      <footer className="bg-forest-900 text-white/55 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-            <div className="sm:col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2.5 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 text-sage">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <path d="M8 10h8" />
-                  <path d="M12 7v6" />
-                </svg>
-                <span className="font-extrabold text-white text-xl tracking-tight">PrepMate</span>
-              </div>
-              <p className="text-sm leading-relaxed">
-                AI-powered mock interview platform for serious tech job seekers.
-              </p>
-            </div>
 
-            <div>
-              <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Product</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button></li>
-                <li><button onClick={() => scrollTo('pricing')} className="hover:text-white transition-colors">Pricing</button></li>
-                <li><button onClick={() => scrollTo('how-it-works')} className="hover:text-white transition-colors">How It Works</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors">FAQ</button></li>
-              </ul>
-            </div>
+          {/* Brand */}
+          <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 text-sage flex-shrink-0">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M8 10h8" />
+              <path d="M12 7v6" />
+            </svg>
+            <span className="font-extrabold text-white text-base tracking-tight">PrepMate</span>
+          </div>
+          <p className="text-xs text-white/45 leading-relaxed mb-6 text-center sm:text-left">
+            AI-powered mock interview platform for serious tech job seekers.
+          </p>
 
-            <div>
-              <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Account</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link to="/register" className="text-white/55 hover:text-white transition-colors">Sign Up Free</Link></li>
-                <li><Link to="/login" className="text-white/55 hover:text-white transition-colors">Sign In</Link></li>
-                <li><Link to="/forgot-password" className="text-white/55 hover:text-white transition-colors">Reset Password</Link></li>
-              </ul>
+          {/* Flat links */}
+          <div className="flex flex-wrap justify-center sm:justify-start gap-x-5 gap-y-2 text-sm mb-8">
+            <button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button>
+            <button onClick={() => scrollTo('pricing')} className="hover:text-white transition-colors">Pricing</button>
+            <button onClick={() => scrollTo('how-it-works')} className="hover:text-white transition-colors">How It Works</button>
+            <button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors">FAQ</button>
+            <div className="hidden sm:flex items-center gap-5 ml-auto">
+              <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             </div>
-
-            <div>
-              <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Legal</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link to="/terms" className="text-white/55 hover:text-white transition-colors">Terms of Service</Link></li>
-                <li><Link to="/privacy" className="text-white/55 hover:text-white transition-colors">Privacy Policy</Link></li>
-              </ul>
+            <div className="sm:hidden w-full flex justify-center gap-5 pt-1">
+              <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="border-t border-white/10 pt-5 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-xs">
             <p>© {new Date().getFullYear()} PrepMate. All rights reserved.</p>
             <p className="flex items-center gap-1.5">
-              Powered by
-              <span className="text-sage font-semibold ml-0.5">Google Gemini AI</span>
+              Powered by <span className="text-sage font-semibold">Google Gemini AI</span>
               <span className="opacity-40">·</span>
-              Payments by
-              <span className="text-sage font-semibold ml-0.5">Razorpay</span>
+              Payments by <span className="text-sage font-semibold">Razorpay</span>
             </p>
           </div>
         </div>

@@ -9,10 +9,7 @@ const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
-    if (document.getElementById('razorpay-script')) {
-      resolve(true);
-      return;
-    }
+    if (document.getElementById('razorpay-script')) { resolve(true); return; }
     const script = document.createElement('script');
     script.id = 'razorpay-script';
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -22,43 +19,24 @@ function loadRazorpayScript() {
   });
 }
 
-const PLANS = {
-  monthly: { label: 'Monthly', price: 299, amount: 29900, perMonth: 299, period: '/month' },
-  annual:  { label: 'Annual',  price: 3229, amount: 322900, perMonth: 269, period: '/year', savingLabel: 'Save ₹359 — 10% off' },
+const PACKS = {
+  starter: { label: 'Starter', sessions: 5,  price: 149, perSession: 30,  badge: null,         desc: 'Try it out' },
+  popular: { label: 'Popular', sessions: 15, price: 299, perSession: 20,  badge: 'Most Popular', desc: 'Best value' },
+  power:   { label: 'Power',   sessions: 30, price: 499, perSession: 17,  badge: 'Best Deal',   desc: 'For serious prep' },
 };
-
-const FREE_FEATURES = [
-  { text: '5 interview sessions total', ok: true },
-  { text: 'Basic job roles only', ok: true },
-  { text: 'Text answers only', ok: true },
-  { text: 'Unlimited sessions', ok: false },
-  { text: 'All job roles & difficulty levels', ok: false },
-  { text: 'AI answer evaluation', ok: false },
-  { text: 'Performance summaries', ok: false },
-  { text: 'Voice input', ok: false },
-];
-
-const PRO_FEATURES = [
-  'Unlimited interview sessions',
-  'All job roles & difficulty levels',
-  'AI-powered answer evaluation',
-  'Detailed performance summaries',
-  'Voice input support',
-  'Priority support',
-];
 
 const FAQ_ITEMS = [
   {
-    q: 'Can I cancel anytime?',
-    a: "Yes. Cancel whenever you want — your Pro access stays active until the end of your billing period. No hidden fees.",
+    q: 'Do credits expire?',
+    a: 'No. Your session credits never expire — use them at your own pace.',
   },
   {
     q: 'What payment methods are accepted?',
     a: "Credit/debit cards, UPI, net banking, and wallets — all processed securely by Razorpay, India's most trusted gateway.",
   },
   {
-    q: 'What happens after my 5 free sessions?',
-    a: "You'll need Pro to keep practicing. Your session history, scores, and progress are always preserved.",
+    q: 'Can I buy multiple packs?',
+    a: 'Yes. Credits stack — buy a Starter now and a Popular pack later, and all credits add up.',
   },
   {
     q: 'Is my payment information secure?',
@@ -69,12 +47,6 @@ const FAQ_ITEMS = [
 const CheckIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg className="w-4 h-4 flex-shrink-0 text-light-text/20 dark:text-dark-text/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
 
@@ -116,47 +88,48 @@ function FaqItem({ item, isOpen, onToggle }) {
 }
 
 const UpgradePro = () => {
-  const [selectedPlan, setSelectedPlan] = useState('annual');
-  const [loading, setLoading] = useState(false);
+  const [loadingPack, setLoadingPack] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
   const { currentUser, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleUpgrade = async () => {
+  const credits = currentUser?.sessionCredits ?? 0;
+
+  const handlePurchase = async (packKey) => {
     if (!RAZORPAY_KEY_ID) {
       toast.error('Payment is not configured yet. Please try again later.');
       return;
     }
 
-    setLoading(true);
+    setLoadingPack(packKey);
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) {
         toast.error('Failed to load payment gateway. Check your connection.');
-        setLoading(false);
+        setLoadingPack(null);
         return;
       }
 
-      const { data } = await axios.post(`${API_URL}/payment/create-order`, { plan: selectedPlan });
-      const { orderId, amount, currency } = data;
+      const { data } = await axios.post(`${API_URL}/payment/create-order`, { pack: packKey });
+      const { orderId, amount, currency, sessions, label } = data;
 
       const options = {
         key: RAZORPAY_KEY_ID,
         amount,
         currency,
         name: 'PrepMate',
-        description: `Pro Plan — ${PLANS[selectedPlan].label}`,
+        description: `${label} Pack — ${sessions} interview sessions`,
         order_id: orderId,
         handler: async (response) => {
           try {
-            await axios.post(`${API_URL}/payment/verify`, {
+            const res = await axios.post(`${API_URL}/payment/verify`, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              plan: selectedPlan,
+              pack: packKey,
             });
             await refreshUser();
-            toast.success('Welcome to Pro! Enjoy unlimited sessions.');
+            toast.success(`${res.data.sessionsAdded} sessions added to your account!`);
             navigate('/dashboard');
           } catch {
             toast.error('Payment verification failed. Contact support if amount was deducted.');
@@ -166,82 +139,38 @@ const UpgradePro = () => {
           name: currentUser?.name || '',
           email: currentUser?.email || '',
         },
+        config: {
+          display: {
+            hide: [
+              { method: 'emi' },
+              { method: 'paylater' },
+            ],
+          },
+        },
         theme: { color: '#537D5D' },
-        modal: { ondismiss: () => setLoading(false) },
+        modal: { ondismiss: () => setLoadingPack(null) },
       };
 
       const rzp = new window.Razorpay(options);
+
+      // Intercept Razorpay's injected backdrop (inline styles override CSS)
+      const observer = new MutationObserver(() => {
+        const backdrop = document.querySelector('.razorpay-backdrop');
+        if (backdrop) {
+          backdrop.style.background = 'rgba(0,0,0,0.55)';
+          backdrop.style.backdropFilter = 'blur(6px)';
+          backdrop.style.webkitBackdropFilter = 'blur(6px)';
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
       rzp.open();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
-      setLoading(false);
+      setLoadingPack(null);
     }
   };
-
-  const isPro = currentUser?.plan === 'pro';
-
-  /* ─── Already on Pro ─── */
-  if (isPro) {
-    return (
-      <div className="min-h-screen bg-light-bg dark:bg-dark-bg flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md animate-fadeIn">
-          {/* Pro status card */}
-          <div className="relative bg-forest rounded-2xl p-8 text-white shadow-2xl overflow-hidden">
-            <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/5 rounded-full" />
-            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-white/5 rounded-full" />
-
-            <div className="relative">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
-                  <CheckIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-white/60 text-xs uppercase tracking-wide font-semibold">Active plan</p>
-                  <p className="text-lg font-bold leading-tight">PrepMate Pro</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-white/10 rounded-xl p-3.5">
-                  <p className="text-white/50 text-xs mb-0.5">Billing</p>
-                  <p className="font-semibold text-sm capitalize">{currentUser?.billingCycle || 'Monthly'}</p>
-                </div>
-                {currentUser?.planExpiresAt && (
-                  <div className="bg-white/10 rounded-xl p-3.5">
-                    <p className="text-white/50 text-xs mb-0.5">Renews</p>
-                    <p className="font-semibold text-sm">
-                      {new Date(currentUser.planExpiresAt).toLocaleDateString('en-IN', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <ul className="space-y-2 mb-6">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-white/90">
-                    <CheckIcon className="w-4 h-4 text-green-300 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full py-3 rounded-xl bg-white text-forest font-semibold text-sm hover:bg-white/90 transition-colors active:scale-[0.98]"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ─── Upgrade page ─── */
-  const plan = PLANS[selectedPlan];
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
@@ -249,164 +178,104 @@ const UpgradePro = () => {
       {/* Hero */}
       <div className="pt-14 pb-10 px-4 text-center">
         <span className="inline-block mb-4 px-3 py-1 rounded-full bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage text-xs font-bold uppercase tracking-widest">
-          PrepMate Pro
+          Session Packs
         </span>
         <h1 className="text-3xl sm:text-4xl font-bold text-light-text dark:text-dark-text mb-3 leading-tight">
-          Ace every interview,{' '}
-          <span className="gradient-text">every time</span>
+          Buy sessions,{' '}
+          <span className="gradient-text">no subscriptions</span>
         </h1>
         <p className="text-light-text/60 dark:text-dark-text/60 max-w-sm mx-auto text-base">
-          Unlimited AI-powered practice with no session limits.
+          Pay only for what you need. Credits never expire.
         </p>
+
+        {credits > 0 && (
+          <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage text-sm font-semibold">
+            <CheckIcon className="w-4 h-4" />
+            {credits} session{credits !== 1 ? 's' : ''} remaining
+          </div>
+        )}
       </div>
 
       <div className="max-w-4xl mx-auto px-4 pb-24 space-y-12">
 
-        {/* Billing toggle */}
-        <div className="flex justify-center">
-          <div className="inline-flex items-center bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-full p-1 shadow-sm gap-1">
-            {Object.entries(PLANS).map(([key, p]) => (
-              <button
+        {/* Pack cards */}
+        <div className="grid sm:grid-cols-3 gap-5 items-start">
+          {Object.entries(PACKS).map(([key, pack]) => {
+            const isPopular = key === 'popular';
+            const isLoading = loadingPack === key;
+            return (
+              <div
                 key={key}
-                onClick={() => setSelectedPlan(key)}
-                className={`relative px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedPlan === key
-                    ? 'bg-forest text-white shadow'
-                    : 'text-light-text/60 dark:text-dark-text/60 hover:text-light-text dark:hover:text-dark-text'
+                className={`relative bg-white dark:bg-dark-muted rounded-2xl p-6 flex flex-col ${
+                  isPopular
+                    ? 'border-2 border-forest shadow-xl shadow-forest/10'
+                    : 'border border-light-border dark:border-dark-border'
                 }`}
               >
-                {p.label}
-                {p.savingLabel && (
-                  <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    selectedPlan === key
-                      ? 'bg-white/20 text-white'
-                      : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  }`}>
-                    −10%
-                  </span>
+                {pack.badge && (
+                  <div className="absolute -top-3.5 inset-x-0 flex justify-center">
+                    <span className="px-4 py-1 bg-forest text-white text-[11px] font-bold rounded-full uppercase tracking-wider shadow-md">
+                      {pack.badge}
+                    </span>
+                  </div>
                 )}
-              </button>
-            ))}
-          </div>
+
+                <div className="mb-5">
+                  <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isPopular ? 'text-forest dark:text-sage' : 'text-light-text/40 dark:text-dark-text/40'}`}>
+                    {pack.label}
+                  </p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold text-light-text dark:text-dark-text">
+                      ₹{pack.price}
+                    </span>
+                  </div>
+                  <p className="text-sm text-light-text/50 dark:text-dark-text/50 mt-1">
+                    {pack.sessions} sessions · ₹{pack.perSession}/session
+                  </p>
+                  <p className="text-xs text-forest dark:text-sage font-medium mt-0.5">{pack.desc}</p>
+                </div>
+
+                <ul className="space-y-2 mb-6 flex-1">
+                  {[
+                    `${pack.sessions} interview sessions`,
+                    'All job roles & difficulty levels',
+                    'AI answer evaluation',
+                    'Performance summaries',
+                    'Voice input support',
+                    'Credits never expire',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-light-text dark:text-dark-text">
+                      <CheckIcon className="w-4 h-4 text-forest flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => handlePurchase(key)}
+                  disabled={!!loadingPack}
+                  className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                    isPopular
+                      ? 'bg-forest hover:bg-forest-700 text-white shadow-md hover:shadow-lg'
+                      : 'bg-forest/10 dark:bg-forest/20 hover:bg-forest/20 dark:hover:bg-forest/30 text-forest dark:text-sage'
+                  }`}
+                >
+                  {isLoading ? (
+                    <><SpinnerIcon /> Opening payment…</>
+                  ) : (
+                    `Get ${pack.sessions} sessions · ₹${pack.price}`
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Plan cards */}
-        <div className="grid md:grid-cols-2 gap-6 items-start">
-
-          {/* Free card */}
-          <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl p-6">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-light-text/40 dark:text-dark-text/40 mb-1">Free</p>
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-bold text-light-text dark:text-dark-text">₹0</span>
-                <span className="text-light-text/40 dark:text-dark-text/40 text-sm pb-1">forever</span>
-              </div>
-            </div>
-
-            <ul className="space-y-2.5 mb-6">
-              {FREE_FEATURES.map((f) => (
-                <li key={f.text} className={`flex items-center gap-2.5 text-sm ${f.ok ? 'text-light-text dark:text-dark-text' : 'text-light-text/30 dark:text-dark-text/30'}`}>
-                  {f.ok
-                    ? <CheckIcon className="w-4 h-4 text-forest flex-shrink-0" />
-                    : <XIcon />
-                  }
-                  <span className={!f.ok ? 'line-through' : ''}>{f.text}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="w-full py-2.5 rounded-xl border border-light-border dark:border-dark-border text-center text-sm text-light-text/40 dark:text-dark-text/40 font-medium select-none">
-              Your current plan
-            </div>
-          </div>
-
-          {/* Pro card */}
-          <div className="relative bg-white dark:bg-dark-muted border-2 border-forest rounded-2xl p-6 shadow-xl shadow-forest/10">
-            {/* Most popular badge */}
-            <div className="absolute -top-3.5 inset-x-0 flex justify-center">
-              <span className="px-4 py-1 bg-forest text-white text-[11px] font-bold rounded-full uppercase tracking-wider shadow-md">
-                Most Popular
-              </span>
-            </div>
-
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-forest dark:text-sage mb-1">Pro</p>
-              <div className="flex items-end gap-1 flex-wrap">
-                <span className="text-4xl font-bold text-light-text dark:text-dark-text">
-                  ₹{plan.perMonth.toLocaleString('en-IN')}
-                </span>
-                <span className="text-light-text/40 dark:text-dark-text/40 text-sm pb-1">/ month</span>
-              </div>
-              {selectedPlan === 'annual' ? (
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-sm text-light-text/40 dark:text-dark-text/40 line-through">₹299/mo</span>
-                  <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full font-semibold">
-                    Save ₹359/year
-                  </span>
-                  <span className="text-xs text-light-text/40 dark:text-dark-text/40">· billed annually</span>
-                </div>
-              ) : (
-                <p className="text-sm text-light-text/40 dark:text-dark-text/40 mt-1">billed monthly</p>
-              )}
-            </div>
-
-            <ul className="space-y-2.5 mb-6">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-light-text dark:text-dark-text">
-                  <CheckIcon className="w-4 h-4 text-forest flex-shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={handleUpgrade}
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-forest hover:bg-forest-700 text-white font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <SpinnerIcon />
-                  Opening payment…
-                </>
-              ) : (
-                `Upgrade — ₹${plan.price.toLocaleString('en-IN')}${plan.period}`
-              )}
-            </button>
-
-            <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-light-text/40 dark:text-dark-text/40 mt-3">
-              <ShieldIcon />
-              Secured by Razorpay · Cancel anytime
-            </p>
-          </div>
-        </div>
-
-        {/* What you get — full-width row */}
-        <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl p-6 sm:p-8">
-          <h2 className="text-base font-semibold text-light-text dark:text-dark-text mb-5 text-center">
-            Everything in Pro
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-            {[
-              { title: 'Unlimited sessions', desc: 'Practice as much as you need — no monthly cap.' },
-              { title: 'All job roles', desc: 'SWE, PM, Design, Data Science, and more.' },
-              { title: 'Multiple difficulty levels', desc: 'Junior → Senior → Staff — pick your challenge.' },
-              { title: 'AI answer evaluation', desc: 'Instant, rubric-based feedback on every answer.' },
-              { title: 'Performance summaries', desc: 'End-of-session scores and improvement tips.' },
-              { title: 'Voice input', desc: 'Speak your answers naturally, just like a real interview.' },
-            ].map(({ title, desc }) => (
-              <div key={title} className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-lg bg-forest/10 dark:bg-forest/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckIcon className="w-3.5 h-3.5 text-forest dark:text-sage" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-light-text dark:text-dark-text">{title}</p>
-                  <p className="text-xs text-light-text/50 dark:text-dark-text/50 mt-0.5">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Trust strip */}
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-light-text/40 dark:text-dark-text/40">
+          <ShieldIcon />
+          Secured by Razorpay · Credits stack · No subscription
+        </p>
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto w-full">
@@ -425,20 +294,20 @@ const UpgradePro = () => {
           </div>
         </div>
 
-        {/* Bottom CTA strip */}
+        {/* Bottom CTA */}
         <div className="bg-gradient-to-r from-forest to-forest-700 rounded-2xl p-7 text-center text-white">
-          <p className="font-bold text-lg mb-1">Ready to level up?</p>
-          <p className="text-white/70 text-sm mb-5">Join learners who practice smarter with PrepMate Pro.</p>
+          <p className="font-bold text-lg mb-1">Start practicing smarter</p>
+          <p className="text-white/70 text-sm mb-5">No subscription. No commitment. Just sessions when you need them.</p>
           <button
-            onClick={handleUpgrade}
-            disabled={loading}
+            onClick={() => handlePurchase('popular')}
+            disabled={!!loadingPack}
             className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-white text-forest font-bold text-sm hover:bg-white/90 transition-colors active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
           >
-            {loading ? <><SpinnerIcon /> Opening payment…</> : `Get Pro · ₹${plan.price.toLocaleString('en-IN')}${plan.period}`}
+            {loadingPack === 'popular' ? <><SpinnerIcon /> Opening payment…</> : 'Get 15 sessions · ₹299'}
           </button>
           <p className="text-white/40 text-xs mt-3 flex items-center justify-center gap-1.5">
             <ShieldIcon />
-            Secured by Razorpay · Cancel anytime
+            Secured by Razorpay
           </p>
         </div>
 
