@@ -158,7 +158,10 @@ const Header = () => {
                   Logout
                 </Button>
 
-                {/* Mobile Avatar - links to profile */}
+                {/* Mobile plan badge + avatar */}
+                <span className={`lg:hidden px-1.5 py-0.5 rounded text-[10px] font-bold leading-none tracking-wide uppercase ${planClasses}`}>
+                  {planLabel}
+                </span>
                 <Link
                   to="/profile"
                   className={`lg:hidden relative w-8 h-8 bg-forest dark:bg-sage rounded-full flex items-center justify-center ring-2 ring-transparent hover:ring-forest dark:hover:ring-sage transition-all ${isActive('/profile') ? 'ring-forest dark:ring-sage' : ''}`}
