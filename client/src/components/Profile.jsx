@@ -136,7 +136,9 @@ const Profile = () => {
 
   const initials = currentUser?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
   const credits       = currentUser?.sessionCredits ?? 0;
-  const totalCredits  = currentUser?.totalSessionCredits ?? credits;
+  const rawTotal      = currentUser?.totalSessionCredits ?? credits;
+  const totalCredits  = Math.max(rawTotal, credits);
+  const usedCredits   = Math.max(totalCredits - credits, 0);
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
@@ -305,7 +307,7 @@ const Profile = () => {
                 <div>
                   <div className="flex justify-between text-xs text-light-text/40 dark:text-dark-text/40 mb-1.5">
                     <span>{credits} of {totalCredits} remaining</span>
-                    <span>{totalCredits - credits} used</span>
+                    <span>{usedCredits} used</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
                     <div

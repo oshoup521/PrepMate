@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import RoleSelector from './RoleSelector';
 import ChatInterface from './ChatInterface';
 import InterviewSummary from './InterviewSummary';
@@ -38,13 +38,23 @@ const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0
 const InterviewSession = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const sessionId = searchParams.get('sessionId');
   const { refreshUser, currentUser } = useAuth();
-  
-  // Core state
-  const [phase, setPhase] = useState('setup'); // 'setup', 'interview', 'completed'
-  const [selectedRole, setSelectedRole] = useState('');
-  const [difficulty, setDifficulty] = useState('intermediate');
+
+  // Template navigation: role + difficulty passed via route state
+  const templateRole = location.state?.role;
+  const templateDifficulty = location.state?.difficulty;
+  const hasTemplateStart = !!templateRole && !!templateDifficulty && !sessionId;
+
+  // Core state — start in 'loading' when template auto-start is pending so the setup screen doesn't flash
+  const [phase, setPhase] = useState(hasTemplateStart ? 'loading' : 'setup'); // 'setup', 'loading', 'interview', 'completed'
+  const [selectedRole, setSelectedRole] = useState(hasTemplateStart ? templateRole : '');
+  const [difficulty, setDifficulty] = useState(
+    hasTemplateStart
+      ? (templateDifficulty === 'easy' ? 'beginner' : templateDifficulty === 'hard' ? 'advanced' : 'intermediate')
+      : 'intermediate'
+  );
   const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -66,6 +76,7 @@ const InterviewSession = () => {
   
   const chatContainerRef = useRef(null);
   const scrollAreaRef = useRef(null);
+  const autoStartRef = useRef(false);
 
   // Scroll the scrollable chat area to the bottom
   const scrollToBottom = (delay = 80) => {
@@ -80,6 +91,11 @@ const InterviewSession = () => {
   useEffect(() => {
     if (sessionId) {
       loadExistingSession();
+      return;
+    }
+    if (hasTemplateStart && !autoStartRef.current) {
+      autoStartRef.current = true;
+      autoStartFromTemplate(templateRole, templateDifficulty);
     }
   }, [sessionId]);
 
@@ -164,6 +180,24 @@ const InterviewSession = () => {
       console.error('Failed to load session:', error);
       showErrorToast('Failed to load session');
       navigate('/dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const autoStartFromTemplate = async (role, apiDifficulty) => {
+    setIsLoading(true);
+    try {
+      const session = await interviewService.createSession(role, apiDifficulty);
+      setCurrentSession(session);
+      setPhase('interview');
+      await generateQuestionForSession(role, apiDifficulty);
+      scrollToBottom(300);
+      showSuccessToast('Interview started! Good luck!');
+    } catch (error) {
+      console.error('Failed to auto-start template interview:', error);
+      showErrorToast('Failed to start interview');
+      setPhase('setup');
     } finally {
       setIsLoading(false);
     }
@@ -536,6 +570,14 @@ const InterviewSession = () => {
       <div className="bg-light-bg dark:bg-dark-bg">
         {showConfetti && <ConfettiEffect />}
         <InterviewSummary summary={summary} onReset={resetInterview} questionTimings={questionTimings} />
+      </div>
+    );
+  }
+
+  if (phase === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg px-4">
+        <LoadingCard message="Preparing your interview..." className="max-w-sm w-full" />
       </div>
     );
   }
