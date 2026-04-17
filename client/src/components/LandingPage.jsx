@@ -502,7 +502,7 @@ const LandingPage = () => {
           {[
             { val: '9', label: 'Tech Roles' },
             { val: '3', label: 'Difficulty Levels' },
-            { val: '₹20', label: 'Per Session (Popular Pack)' },
+            { val: '₹35', label: 'Per Session (Popular Pack)' },
             { val: 'AI', label: 'Powered by Gemini' },
           ].map(s => (
             <div key={s.label}>
@@ -633,6 +633,12 @@ const LandingPage = () => {
             <p className="text-light-text/60 dark:text-dark-text/55 max-w-xl mx-auto text-lg leading-relaxed">
               Start with 3 free sessions. Buy more when you need them. Credits never expire.
             </p>
+            <div className="mt-5 flex justify-center">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/15 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 text-xs font-semibold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Limited-time intro pricing · Up to 40% off
+              </span>
+            </div>
           </div>
 
           <div
@@ -658,9 +664,9 @@ const LandingPage = () => {
             {/* Session packs */}
             <div className="grid sm:grid-cols-3 gap-5 max-w-4xl mx-auto">
               {[
-                { key: 'starter', label: 'Starter',  sessions: 5,  price: 149, perSession: 30,  badge: null,          desc: 'Try it out' },
-                { key: 'popular', label: 'Popular',  sessions: 15, price: 299, perSession: 20,  badge: 'Most Popular', desc: 'Best value' },
-                { key: 'power',   label: 'Power',    sessions: 30, price: 499, perSession: 17,  badge: 'Best Deal',    desc: 'Serious prep' },
+                { key: 'starter', label: 'Starter',  sessions: 5,  price: 225, retail: 250,  perSession: 45, badge: null,          desc: 'Try it out' },
+                { key: 'popular', label: 'Popular',  sessions: 15, price: 525, retail: 750,  perSession: 35, badge: 'Most Popular', desc: 'Best value' },
+                { key: 'power',   label: 'Power',    sessions: 30, price: 900, retail: 1500, perSession: 30, badge: 'Best Deal',    desc: 'Serious prep' },
               ].map(pack => (
                 <div
                   key={pack.key}
@@ -687,13 +693,16 @@ const LandingPage = () => {
                     <p className={`text-sm ${pack.badge === 'Most Popular' ? 'text-white/65' : 'text-light-text/55 dark:text-dark-text/55'}`}>
                       {pack.desc}
                     </p>
-                    <div className="flex items-end gap-1 mt-3">
+                    <div className="flex items-end gap-2 mt-3">
                       <span className={`text-4xl font-black ${pack.badge === 'Most Popular' ? 'text-white' : 'text-light-text dark:text-dark-text'}`}>
                         ₹{pack.price}
                       </span>
+                      <span className={`text-sm line-through mb-1 ${pack.badge === 'Most Popular' ? 'text-white/50' : 'text-light-text/35 dark:text-dark-text/35'}`}>
+                        ₹{pack.retail}
+                      </span>
                     </div>
                     <p className={`text-xs mt-1 ${pack.badge === 'Most Popular' ? 'text-white/55' : 'text-light-text/40 dark:text-dark-text/40'}`}>
-                      {pack.sessions} sessions · ₹{pack.perSession}/session
+                      {pack.sessions} sessions · ₹{pack.perSession}/session · Save {Math.round((1 - pack.price / pack.retail) * 100)}%
                     </p>
                   </div>
 

@@ -1,10 +1,20 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateOrderDto {
-  @ApiProperty({ enum: ['starter', 'popular', 'power'] })
+  @ApiPropertyOptional({ enum: ['starter', 'popular', 'power'] })
+  @IsOptional()
   @IsIn(['starter', 'popular', 'power'])
-  pack: 'starter' | 'popular' | 'power';
+  pack?: 'starter' | 'popular' | 'power';
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  sessions?: number;
 }
 
 export class VerifyPaymentDto {
@@ -23,7 +33,16 @@ export class VerifyPaymentDto {
   @IsNotEmpty()
   razorpay_signature: string;
 
-  @ApiProperty({ enum: ['starter', 'popular', 'power'] })
+  @ApiPropertyOptional({ enum: ['starter', 'popular', 'power'] })
+  @IsOptional()
   @IsIn(['starter', 'popular', 'power'])
-  pack: 'starter' | 'popular' | 'power';
+  pack?: 'starter' | 'popular' | 'power';
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  sessions?: number;
 }

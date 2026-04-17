@@ -320,9 +320,9 @@ const Profile = () => {
                 {/* Pack info */}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   {[
-                    { label: 'Starter', sessions: 5,  price: '₹149' },
-                    { label: 'Popular', sessions: 15, price: '₹299' },
-                    { label: 'Power',   sessions: 30, price: '₹499' },
+                    { label: 'Starter', sessions: 5,  price: '₹225' },
+                    { label: 'Popular', sessions: 15, price: '₹525' },
+                    { label: 'Power',   sessions: 30, price: '₹900' },
                   ].map(p => (
                     <div key={p.label} className="bg-light-bg dark:bg-dark-bg rounded-xl p-3">
                       <p className="text-xs text-light-text/40 dark:text-dark-text/40">{p.label}</p>

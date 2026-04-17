@@ -17,9 +17,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
 const SESSION_PACKS = [
-  { key: 'starter', label: 'Starter', sessions: 5,  price: 149, badge: null },
-  { key: 'popular', label: 'Popular', sessions: 15, price: 299, badge: 'Most Popular' },
-  { key: 'power',   label: 'Power',   sessions: 30, price: 499, badge: 'Best Deal' },
+  { key: 'starter', label: 'Starter', sessions: 5,  price: 225, badge: null },
+  { key: 'popular', label: 'Popular', sessions: 15, price: 525, badge: 'Most Popular' },
+  { key: 'power',   label: 'Power',   sessions: 30, price: 900, badge: 'Best Deal' },
 ];
 
 function loadRazorpayScript() {

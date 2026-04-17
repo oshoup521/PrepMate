@@ -16,7 +16,7 @@ export class PaymentController {
   @Post('create-order')
   @HttpCode(HttpStatus.CREATED)
   createOrder(@Body() dto: CreateOrderDto) {
-    return this.paymentService.createOrder(dto.pack);
+    return this.paymentService.createOrder({ pack: dto.pack, sessions: dto.sessions });
   }
 
   @ApiOperation({ summary: 'Verify payment and add session credits' })
@@ -29,7 +29,7 @@ export class PaymentController {
       dto.razorpay_order_id,
       dto.razorpay_payment_id,
       dto.razorpay_signature,
-      dto.pack,
+      { pack: dto.pack, sessions: dto.sessions },
     );
   }
 }

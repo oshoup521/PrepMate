@@ -5,12 +5,82 @@ import Razorpay = require('razorpay');
 import { UsersService } from '../users/users.service';
 
 export const SESSION_PACKS = {
-  starter: { amountPaise: 14900, sessions: 5,  label: 'Starter' },
-  popular: { amountPaise: 29900, sessions: 15, label: 'Popular' },
-  power:   { amountPaise: 49900, sessions: 30, label: 'Power'   },
+  starter: { amountPaise: 22500, sessions: 5,  label: 'Starter' },
+  popular: { amountPaise: 52500, sessions: 15, label: 'Popular' },
+  power:   { amountPaise: 90000, sessions: 30, label: 'Power'   },
 } as const;
 
 export type PackKey = keyof typeof SESSION_PACKS;
+
+export const CUSTOM_MIN_SESSIONS = 1;
+export const CUSTOM_MAX_SESSIONS = 100;
+
+// Marginal (bracket) pricing — each bracket's rate applies only to sessions
+// that fall inside it. Packs remain the best deal by a small margin, which
+// nudges users toward the curated options while still supporting custom qty.
+const CUSTOM_BRACKETS: ReadonlyArray<{ upTo: number; paisePerSession: number }> = [
+  { upTo: 5,   paisePerSession: 5000 }, // 1–5:   ₹50/session (retail anchor)
+  { upTo: 15,  paisePerSession: 3000 }, // 6–15:  ₹30/session
+  { upTo: 30,  paisePerSession: 2500 }, // 16–30: ₹25/session
+  { upTo: 100, paisePerSession: 2200 }, // 31+:   ₹22/session
+];
+
+export function calculateCustomPricePaise(sessions: number): number {
+  if (
+    !Number.isInteger(sessions) ||
+    sessions < CUSTOM_MIN_SESSIONS ||
+    sessions > CUSTOM_MAX_SESSIONS
+  ) {
+    throw new BadRequestException(
+      `sessions must be an integer between ${CUSTOM_MIN_SESSIONS} and ${CUSTOM_MAX_SESSIONS}`,
+    );
+  }
+  let remaining = sessions;
+  let prevCap = 0;
+  let totalPaise = 0;
+  for (const b of CUSTOM_BRACKETS) {
+    const bracketSize = b.upTo - prevCap;
+    const take = Math.min(remaining, bracketSize);
+    totalPaise += take * b.paisePerSession;
+    remaining -= take;
+    prevCap = b.upTo;
+    if (remaining <= 0) break;
+  }
+  return totalPaise;
+}
+
+type OrderInput = { pack?: PackKey; sessions?: number };
+
+function resolveOrderInput(input: OrderInput): {
+  sessions: number;
+  amountPaise: number;
+  label: string;
+  kind: 'pack' | 'custom';
+  packKey?: PackKey;
+} {
+  const hasPack = !!input.pack;
+  const hasSessions = typeof input.sessions === 'number';
+  if (hasPack === hasSessions) {
+    throw new BadRequestException('Provide exactly one of `pack` or `sessions`');
+  }
+  if (hasPack) {
+    const p = SESSION_PACKS[input.pack as PackKey];
+    return {
+      sessions: p.sessions,
+      amountPaise: p.amountPaise,
+      label: p.label,
+      kind: 'pack',
+      packKey: input.pack,
+    };
+  }
+  const s = input.sessions as number;
+  return {
+    sessions: s,
+    amountPaise: calculateCustomPricePaise(s),
+    label: `Custom · ${s} session${s === 1 ? '' : 's'}`,
+    kind: 'custom',
+  };
+}
 
 @Injectable()
 export class PaymentService {
@@ -27,14 +97,21 @@ export class PaymentService {
     });
   }
 
-  async createOrder(pack: PackKey) {
-    const { amountPaise, sessions, label } = SESSION_PACKS[pack];
+  async createOrder(input: OrderInput) {
+    const resolved = resolveOrderInput(input);
+    const receiptTag = resolved.kind === 'pack' ? resolved.packKey : `custom${resolved.sessions}`;
     const order = await this.razorpay.orders.create({
-      amount: amountPaise,
+      amount: resolved.amountPaise,
       currency: 'INR',
-      receipt: `prepmate_${pack}_${Date.now()}`,
+      receipt: `prepmate_${receiptTag}_${Date.now()}`,
     });
-    return { orderId: order.id, amount: order.amount, currency: order.currency, sessions, label };
+    return {
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      sessions: resolved.sessions,
+      label: resolved.label,
+    };
   }
 
   async verifyAndAddCredits(
@@ -42,7 +119,7 @@ export class PaymentService {
     razorpay_order_id: string,
     razorpay_payment_id: string,
     razorpay_signature: string,
-    pack: PackKey,
+    input: OrderInput,
   ) {
     const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET') ?? '';
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
@@ -56,9 +133,9 @@ export class PaymentService {
       throw new BadRequestException('Payment verification failed: invalid signature');
     }
 
-    const { sessions } = SESSION_PACKS[pack];
+    const { sessions, kind } = resolveOrderInput(input);
     await this.usersService.addSessionCredits(userId, sessions, razorpay_payment_id, razorpay_order_id);
-    this.logger.log(`User ${userId} purchased ${pack} pack (+${sessions} sessions)`);
+    this.logger.log(`User ${userId} purchased ${kind} (+${sessions} sessions)`);
     return { success: true, sessionsAdded: sessions };
   }
 }

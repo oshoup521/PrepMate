@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from '../utils/axiosConfig';
@@ -19,11 +19,40 @@ function loadRazorpayScript() {
   });
 }
 
+const RETAIL_PER_SESSION = 50;
+
 const PACKS = {
-  starter: { label: 'Starter', sessions: 5,  price: 149, perSession: 30,  badge: null,         desc: 'Try it out' },
-  popular: { label: 'Popular', sessions: 15, price: 299, perSession: 20,  badge: 'Most Popular', desc: 'Best value' },
-  power:   { label: 'Power',   sessions: 30, price: 499, perSession: 17,  badge: 'Best Deal',   desc: 'For serious prep' },
+  starter: { label: 'Starter', sessions: 5,  price: 225, perSession: 45, badge: null,           desc: 'Try it out' },
+  popular: { label: 'Popular', sessions: 15, price: 525, perSession: 35, badge: 'Most Popular', desc: 'Best value' },
+  power:   { label: 'Power',   sessions: 30, price: 900, perSession: 30, badge: 'Best Deal',    desc: 'For serious prep' },
 };
+
+const CUSTOM_MIN = 1;
+const CUSTOM_MAX = 100;
+const CUSTOM_DEFAULT = 10;
+
+// Mirrors server/src/payment/payment.service.ts — keep in sync.
+// Server recomputes and is source of truth; this is for live UI preview only.
+const CUSTOM_BRACKETS = [
+  { upTo: 5,   paisePerSession: 5000 },
+  { upTo: 15,  paisePerSession: 3000 },
+  { upTo: 30,  paisePerSession: 2500 },
+  { upTo: 100, paisePerSession: 2200 },
+];
+
+function calcCustomPaise(sessions) {
+  let remaining = sessions;
+  let prevCap = 0;
+  let total = 0;
+  for (const b of CUSTOM_BRACKETS) {
+    const take = Math.min(remaining, b.upTo - prevCap);
+    total += take * b.paisePerSession;
+    remaining -= take;
+    prevCap = b.upTo;
+    if (remaining <= 0) break;
+  }
+  return total;
+}
 
 const FAQ_ITEMS = [
   {
@@ -88,29 +117,53 @@ function FaqItem({ item, isOpen, onToggle }) {
 }
 
 const UpgradePro = () => {
-  const [loadingPack, setLoadingPack] = useState(null);
+  const [loadingKey, setLoadingKey] = useState(null);
   const [openFaq, setOpenFaq] = useState(null);
+  const [customCount, setCustomCount] = useState(CUSTOM_DEFAULT);
   const { currentUser, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const credits = currentUser?.sessionCredits ?? 0;
 
-  const handlePurchase = async (packKey) => {
+  const customPreview = useMemo(() => {
+    const n = Math.min(CUSTOM_MAX, Math.max(CUSTOM_MIN, Math.floor(customCount) || CUSTOM_MIN));
+    const paise = calcCustomPaise(n);
+    const price = paise / 100;
+    const perSession = price / n;
+    return { n, price, perSession };
+  }, [customCount]);
+
+  // Find a pack that beats the custom price for the same or fewer sessions — nudge.
+  const packHint = useMemo(() => {
+    const { n, price } = customPreview;
+    const better = Object.values(PACKS).find(
+      (p) => p.sessions >= n && p.price <= price,
+    );
+    if (!better) return null;
+    const extra = better.sessions - n;
+    const saved = price - better.price;
+    if (extra <= 0 && saved <= 0) return null;
+    return { pack: better, extra, saved };
+  }, [customPreview]);
+
+  const handlePurchase = async (payload) => {
+    // payload is { pack: key } or { sessions: n }
     if (!RAZORPAY_KEY_ID) {
       toast.error('Payment is not configured yet. Please try again later.');
       return;
     }
 
-    setLoadingPack(packKey);
+    const key = payload.pack || `custom-${payload.sessions}`;
+    setLoadingKey(key);
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) {
         toast.error('Failed to load payment gateway. Check your connection.');
-        setLoadingPack(null);
+        setLoadingKey(null);
         return;
       }
 
-      const { data } = await axios.post(`${API_URL}/payment/create-order`, { pack: packKey });
+      const { data } = await axios.post(`${API_URL}/payment/create-order`, payload);
       const { orderId, amount, currency, sessions, label } = data;
 
       const options = {
@@ -118,7 +171,7 @@ const UpgradePro = () => {
         amount,
         currency,
         name: 'PrepMate',
-        description: `${label} Pack — ${sessions} interview sessions`,
+        description: `${label} — ${sessions} interview session${sessions === 1 ? '' : 's'}`,
         order_id: orderId,
         handler: async (response) => {
           try {
@@ -126,7 +179,7 @@ const UpgradePro = () => {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              pack: packKey,
+              ...payload,
             });
             await refreshUser();
             toast.success(`${res.data.sessionsAdded} sessions added to your account!`);
@@ -148,12 +201,11 @@ const UpgradePro = () => {
           },
         },
         theme: { color: '#537D5D' },
-        modal: { ondismiss: () => setLoadingPack(null) },
+        modal: { ondismiss: () => setLoadingKey(null) },
       };
 
       const rzp = new window.Razorpay(options);
 
-      // Intercept Razorpay's injected backdrop (inline styles override CSS)
       const observer = new MutationObserver(() => {
         const backdrop = document.querySelector('.razorpay-backdrop');
         if (backdrop) {
@@ -168,14 +220,24 @@ const UpgradePro = () => {
       rzp.open();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
-      setLoadingPack(null);
+      setLoadingKey(null);
     }
   };
+
+  const handleCustomChange = (raw) => {
+    if (raw === '') { setCustomCount(''); return; }
+    const n = Math.floor(Number(raw));
+    if (Number.isNaN(n)) return;
+    setCustomCount(Math.min(CUSTOM_MAX, Math.max(CUSTOM_MIN, n)));
+  };
+
+  const customLoadingKey = `custom-${customPreview.n}`;
+  const isCustomLoading = loadingKey === customLoadingKey;
+  const anyLoading = !!loadingKey;
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
 
-      {/* Hero */}
       <div className="pt-14 pb-10 px-4 text-center">
         <span className="inline-block mb-4 px-3 py-1 rounded-full bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage text-xs font-bold uppercase tracking-widest">
           Session Packs
@@ -198,11 +260,17 @@ const UpgradePro = () => {
 
       <div className="max-w-4xl mx-auto px-4 pb-24 space-y-12">
 
-        {/* Pack cards */}
+        <div className="flex justify-center">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/15 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 text-xs font-semibold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Limited-time intro pricing · Up to 40% off
+          </span>
+        </div>
+
         <div className="grid sm:grid-cols-3 gap-5 items-start">
           {Object.entries(PACKS).map(([key, pack]) => {
             const isPopular = key === 'popular';
-            const isLoading = loadingPack === key;
+            const isLoading = loadingKey === key;
             return (
               <div
                 key={key}
@@ -224,15 +292,20 @@ const UpgradePro = () => {
                   <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isPopular ? 'text-forest dark:text-sage' : 'text-light-text/40 dark:text-dark-text/40'}`}>
                     {pack.label}
                   </p>
-                  <div className="flex items-end gap-1">
+                  <div className="flex items-end gap-2">
                     <span className="text-4xl font-bold text-light-text dark:text-dark-text">
                       ₹{pack.price}
+                    </span>
+                    <span className="text-sm text-light-text/40 dark:text-dark-text/40 line-through mb-1">
+                      ₹{pack.sessions * RETAIL_PER_SESSION}
                     </span>
                   </div>
                   <p className="text-sm text-light-text/50 dark:text-dark-text/50 mt-1">
                     {pack.sessions} sessions · ₹{pack.perSession}/session
                   </p>
-                  <p className="text-xs text-forest dark:text-sage font-medium mt-0.5">{pack.desc}</p>
+                  <p className="text-xs text-forest dark:text-sage font-semibold mt-0.5">
+                    Save {Math.round((1 - pack.price / (pack.sessions * RETAIL_PER_SESSION)) * 100)}% · {pack.desc}
+                  </p>
                 </div>
 
                 <ul className="space-y-2 mb-6 flex-1">
@@ -252,8 +325,8 @@ const UpgradePro = () => {
                 </ul>
 
                 <button
-                  onClick={() => handlePurchase(key)}
-                  disabled={!!loadingPack}
+                  onClick={() => handlePurchase({ pack: key })}
+                  disabled={anyLoading}
                   className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
                     isPopular
                       ? 'bg-forest hover:bg-forest-700 text-white shadow-md hover:shadow-lg'
@@ -271,13 +344,109 @@ const UpgradePro = () => {
           })}
         </div>
 
-        {/* Trust strip */}
+        {/* Custom quantity */}
+        <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl p-6 sm:p-7">
+          <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1 text-light-text/40 dark:text-dark-text/40">
+                Choose your own amount
+              </p>
+              <h3 className="text-lg font-semibold text-light-text dark:text-dark-text">
+                Custom session bundle
+              </h3>
+              <p className="text-sm text-light-text/60 dark:text-dark-text/60 mt-0.5">
+                Pick any number from {CUSTOM_MIN} to {CUSTOM_MAX}. Price scales with quantity.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-5 items-center">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-light-text/50 dark:text-dark-text/50 mb-2">
+                Number of sessions
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCustomChange((customPreview.n - 1).toString())}
+                  disabled={anyLoading || customPreview.n <= CUSTOM_MIN}
+                  className="w-10 h-11 rounded-lg bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage font-bold text-lg hover:bg-forest/20 dark:hover:bg-forest/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Decrease sessions"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={CUSTOM_MIN}
+                  max={CUSTOM_MAX}
+                  value={customCount}
+                  onChange={(e) => handleCustomChange(e.target.value)}
+                  onBlur={() => { if (customCount === '' || customCount < CUSTOM_MIN) setCustomCount(CUSTOM_MIN); }}
+                  disabled={anyLoading}
+                  className="flex-1 h-11 px-3 text-center text-lg font-semibold bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg text-light-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-forest/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCustomChange((customPreview.n + 1).toString())}
+                  disabled={anyLoading || customPreview.n >= CUSTOM_MAX}
+                  className="w-10 h-11 rounded-lg bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage font-bold text-lg hover:bg-forest/20 dark:hover:bg-forest/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Increase sessions"
+                >
+                  +
+                </button>
+              </div>
+              <input
+                type="range"
+                min={CUSTOM_MIN}
+                max={CUSTOM_MAX}
+                value={customPreview.n}
+                onChange={(e) => handleCustomChange(e.target.value)}
+                disabled={anyLoading}
+                className="w-full mt-4 accent-forest"
+                aria-label="Sessions slider"
+              />
+            </div>
+
+            <div className="bg-forest/5 dark:bg-forest/10 rounded-xl p-4">
+              <div className="flex items-end justify-between mb-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-light-text/50 dark:text-dark-text/50">
+                  Total
+                </span>
+                <span className="text-3xl font-bold text-light-text dark:text-dark-text">
+                  ₹{customPreview.price.toFixed(customPreview.price % 1 === 0 ? 0 : 2)}
+                </span>
+              </div>
+              <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+                {customPreview.n} session{customPreview.n === 1 ? '' : 's'} · ₹{customPreview.perSession.toFixed(2)}/session
+              </p>
+              {packHint && (
+                <p className="text-xs text-forest dark:text-sage font-medium mt-2">
+                  Tip: {packHint.pack.label} pack gives you {packHint.pack.sessions} sessions for ₹{packHint.pack.price}
+                  {packHint.saved > 0 && ` — save ₹${packHint.saved.toFixed(0)}`}
+                  {packHint.extra > 0 && ` (+${packHint.extra} extra)`}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => handlePurchase({ sessions: customPreview.n })}
+            disabled={anyLoading}
+            className="w-full mt-5 py-3.5 rounded-xl font-semibold text-sm bg-forest hover:bg-forest-700 text-white shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isCustomLoading ? (
+              <><SpinnerIcon /> Opening payment…</>
+            ) : (
+              `Get ${customPreview.n} session${customPreview.n === 1 ? '' : 's'} · ₹${customPreview.price.toFixed(customPreview.price % 1 === 0 ? 0 : 2)}`
+            )}
+          </button>
+        </div>
+
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-light-text/40 dark:text-dark-text/40">
           <ShieldIcon />
           Secured by Razorpay · Credits stack · No subscription
         </p>
 
-        {/* FAQ */}
         <div className="max-w-2xl mx-auto w-full">
           <h2 className="text-lg font-semibold text-light-text dark:text-dark-text text-center mb-5">
             Frequently asked questions
@@ -294,16 +463,15 @@ const UpgradePro = () => {
           </div>
         </div>
 
-        {/* Bottom CTA */}
         <div className="bg-gradient-to-r from-forest to-forest-700 rounded-2xl p-7 text-center text-white">
           <p className="font-bold text-lg mb-1">Start practicing smarter</p>
           <p className="text-white/70 text-sm mb-5">No subscription. No commitment. Just sessions when you need them.</p>
           <button
-            onClick={() => handlePurchase('popular')}
-            disabled={!!loadingPack}
+            onClick={() => handlePurchase({ pack: 'popular' })}
+            disabled={anyLoading}
             className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-white text-forest font-bold text-sm hover:bg-white/90 transition-colors active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
           >
-            {loadingPack === 'popular' ? <><SpinnerIcon /> Opening payment…</> : 'Get 15 sessions · ₹299'}
+            {loadingKey === 'popular' ? <><SpinnerIcon /> Opening payment…</> : `Get ${PACKS.popular.sessions} sessions · ₹${PACKS.popular.price}`}
           </button>
           <p className="text-white/40 text-xs mt-3 flex items-center justify-center gap-1.5">
             <ShieldIcon />

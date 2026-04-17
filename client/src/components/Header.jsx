@@ -45,6 +45,12 @@ const Header = () => {
     return location.pathname === path;
   };
 
+  const isPro = (currentUser?.totalSessionCredits ?? 0) > 3;
+  const planLabel = isPro ? 'Pro' : 'Pro Trial';
+  const planClasses = isPro
+    ? 'bg-forest text-white'
+    : 'bg-amber-400/20 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300';
+
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,6 +125,9 @@ const Header = () => {
                       <p className="text-sm font-medium text-light-text dark:text-dark-text">
                         {currentUser.name}
                       </p>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold leading-none tracking-wide uppercase ${planClasses}`}>
+                        {planLabel}
+                      </span>
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage leading-none tracking-wide">
                         {currentUser.sessionCredits ?? 0} left
                       </span>
@@ -253,10 +262,13 @@ const Header = () => {
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="font-medium text-light-text dark:text-dark-text truncate">
                     {currentUser.name}
                   </p>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold leading-none tracking-wide uppercase flex-shrink-0 ${planClasses}`}>
+                    {planLabel}
+                  </span>
                   <button
                     onClick={(e) => { e.preventDefault(); closeMenu(); navigate('/upgrade'); }}
                     className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage leading-none tracking-wide flex-shrink-0 hover:bg-forest/20 transition-colors"
