@@ -16,29 +16,53 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if there's a token in local storage and it's valid
     const storedToken = localStorage.getItem('token');
-    
-    if (storedToken) {
-      try {
-        // Verify token isn't expired
-        const decodedToken = jwtDecode(storedToken);
-        const currentTime = Date.now() / 1000;
-        
-        if (decodedToken.exp > currentTime) {
-          setToken(storedToken);
-          setCurrentUser(JSON.parse(localStorage.getItem('user')));
-        } else {
-          // Token expired
+
+    if (!storedToken) {
+      setLoading(false);
+      return;
+    }
+
+    let cachedUser = null;
+    try {
+      const decodedToken = jwtDecode(storedToken);
+      const currentTime = Date.now() / 1000;
+      if (decodedToken.exp <= currentTime) {
+        logout();
+        setLoading(false);
+        return;
+      }
+      cachedUser = JSON.parse(localStorage.getItem('user'));
+    } catch {
+      logout();
+      setLoading(false);
+      return;
+    }
+
+    // Optimistic hydrate from cache, then verify with server
+    setToken(storedToken);
+    setCurrentUser(cachedUser);
+
+    axios
+      .get(`${API_URL}/auth/profile`, { headers: { Authorization: `Bearer ${storedToken}` } })
+      .then((response) => {
+        const freshUser = response.data;
+        if (!freshUser) {
+          logout();
+          return;
+        }
+        localStorage.setItem('user', JSON.stringify(freshUser));
+        setCurrentUser(freshUser);
+      })
+      .catch((error) => {
+        const status = error?.response?.status;
+        // User deleted / token revoked / unauthorized — force logout.
+        // Network errors (no response) leave the cached session intact.
+        if (status === 401 || status === 403 || status === 404) {
           logout();
         }
-      } catch (error) {
-        // Invalid token
-        logout();
-      }
-    }
-    
-    setLoading(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
   const login = async (email, password) => {
     try {
@@ -97,15 +121,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   const refreshUser = async () => {
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) return;
     try {
-      const storedToken = localStorage.getItem('token');
-      if (!storedToken) return;
       const response = await axios.get(`${API_URL}/auth/profile`);
       const updatedUser = response.data;
+      if (!updatedUser) {
+        logout();
+        return;
+      }
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
-    } catch {
-      // silently fail — stale user data is acceptable
+    } catch (error) {
+      // 401/403 is handled by the global response interceptor (logs out).
+      // For network errors, keep the cached session — stale user data is acceptable.
     }
   };
   // Set up axios interceptor to add auth token to all requests
@@ -120,8 +149,26 @@ export const AuthProvider = ({ children }) => {
       (error) => Promise.reject(error)
     );
 
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status = error?.response?.status;
+        const url = error?.config?.url || '';
+        // Auth endpoints (login/register/password) naturally return 401/403 on bad creds — don't log out.
+        const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password');
+        if ((status === 401 || status === 403) && !isAuthEndpoint && localStorage.getItem('token')) {
+          logout();
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.assign('/login');
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
     return () => {
       axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
     };
   }, [token]);
 
