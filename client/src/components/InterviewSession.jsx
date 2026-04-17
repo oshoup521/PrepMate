@@ -36,6 +36,31 @@ function loadRazorpayScript() {
 
 const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+// Build a "don't repeat these questions" context that stays under the 1000-char server cap.
+// Keeps the most recent questions, truncates each, and hard-caps the final string.
+const MAX_CONTEXT_CHARS = 900; // leave headroom below 1000
+const MAX_QUESTION_SNIPPET = 90;
+const buildQuestionContext = (previousQuestions) => {
+  if (!previousQuestions?.length) return undefined;
+  const prefix = 'Previous questions asked: ';
+  const suffix = '. Please ask a different question.';
+  const budget = MAX_CONTEXT_CHARS - prefix.length - suffix.length;
+  const snippets = [];
+  let used = 0;
+  // Walk from most recent backwards so newest questions are preserved
+  for (let i = previousQuestions.length - 1; i >= 0; i--) {
+    const q = (previousQuestions[i] || '').trim();
+    if (!q) continue;
+    const snippet = q.length > MAX_QUESTION_SNIPPET ? q.slice(0, MAX_QUESTION_SNIPPET) + '…' : q;
+    const addLen = snippet.length + (snippets.length ? 2 : 0); // "; " separator
+    if (used + addLen > budget) break;
+    snippets.unshift(snippet);
+    used += addLen;
+  }
+  if (!snippets.length) return undefined;
+  return `${prefix}${snippets.join('; ')}${suffix}`;
+};
+
 const InterviewSession = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -264,9 +289,7 @@ const InterviewSession = () => {
                            difficulty === 'advanced' ? 'hard' : 'medium';
 
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
-      const context = previousQuestions.length > 0
-        ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
-        : undefined;
+      const context = buildQuestionContext(previousQuestions);
 
       await interviewService.generateQuestionStream(
         selectedRole,
@@ -341,9 +364,7 @@ const InterviewSession = () => {
       const apiDifficulty = sessionDifficulty || 'medium';
 
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
-      const context = previousQuestions.length > 0
-        ? `Previous questions asked: ${previousQuestions.join('; ')}. Please ask a different question.`
-        : undefined;
+      const context = buildQuestionContext(previousQuestions);
 
       await interviewService.generateQuestionStream(
         role,
