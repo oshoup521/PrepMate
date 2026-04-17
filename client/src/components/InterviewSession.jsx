@@ -5,6 +5,7 @@ import ChatInterface from './ChatInterface';
 import InterviewSummary from './InterviewSummary';
 import ConfettiEffect from './ConfettiEffect';
 import { LoadingCard, Button } from './LoadingSpinner';
+import StartInterviewConfirmModal from './StartInterviewConfirmModal';
 import interviewService from '../services/interviewService';
 import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
@@ -53,7 +54,7 @@ const InterviewSession = () => {
   const [difficulty, setDifficulty] = useState(
     hasTemplateStart
       ? (templateDifficulty === 'easy' ? 'beginner' : templateDifficulty === 'hard' ? 'advanced' : 'intermediate')
-      : 'intermediate'
+      : ''
   );
   const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -70,8 +71,13 @@ const InterviewSession = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loadingPack, setLoadingPack] = useState(null);
 
-  // Per-question timing
+  // Start-session confirmation modal (prevents accidental quota burn)
+  const [pendingStart, setPendingStart] = useState(null); // { role, apiDifficulty, fromTemplate }
+
+  // Per-question timing (resets each question)
   const { elapsed, isRunning: timerRunning, start: startTimer, stop: stopTimer } = useQuestionTimer();
+  // Session-level timing (runs from first question to end of interview)
+  const { elapsed: sessionElapsed, isRunning: sessionTimerRunning, start: startSessionTimer, stop: stopSessionTimer } = useQuestionTimer();
   const [questionTimings, setQuestionTimings] = useState([]); // seconds per answered question
   
   const chatContainerRef = useRef(null);
@@ -95,7 +101,11 @@ const InterviewSession = () => {
     }
     if (hasTemplateStart && !autoStartRef.current) {
       autoStartRef.current = true;
-      autoStartFromTemplate(templateRole, templateDifficulty);
+      beginSession({
+        role: templateRole,
+        apiDifficulty: templateDifficulty,
+        fromTemplate: true,
+      });
     }
   }, [sessionId]);
 
@@ -111,10 +121,11 @@ const InterviewSession = () => {
     }
   }, [currentQuestion]);
 
-  // Start timer whenever a new question appears
+  // Start timer whenever a new question appears; start session timer once
   useEffect(() => {
     if (currentQuestion && phase === 'interview') {
       startTimer();
+      if (!sessionTimerRunning) startSessionTimer();
     }
   }, [currentQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -185,49 +196,54 @@ const InterviewSession = () => {
     }
   };
 
-  const autoStartFromTemplate = async (role, apiDifficulty) => {
+  const beginSession = async ({ role, apiDifficulty, fromTemplate }) => {
     setIsLoading(true);
     try {
       const session = await interviewService.createSession(role, apiDifficulty);
       setCurrentSession(session);
       setPhase('interview');
-      await generateQuestionForSession(role, apiDifficulty);
-      scrollToBottom(300);
-      showSuccessToast('Interview started! Good luck!');
-    } catch (error) {
-      console.error('Failed to auto-start template interview:', error);
-      showErrorToast('Failed to start interview');
-      setPhase('setup');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const startNewSession = async () => {
-    if (!selectedRole) {
-      toast.error('Please select a job role first');
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const apiDifficulty = difficulty === 'beginner' ? 'easy' : 
-                           difficulty === 'advanced' ? 'hard' : 'medium';
-      
-      const session = await interviewService.createSession(selectedRole, apiDifficulty);
-      setCurrentSession(session);
-      setPhase('interview');
-
-      await generateQuestion();
-      
-      // Scroll to bottom after starting session
+      if (fromTemplate) {
+        await generateQuestionForSession(role, apiDifficulty);
+      } else {
+        await generateQuestion();
+      }
       scrollToBottom(300);
       showSuccessToast('Interview started! Good luck!');
     } catch (error) {
       console.error('Failed to start interview:', error);
       showErrorToast('Failed to start interview');
+      if (fromTemplate) setPhase('setup');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const startNewSession = () => {
+    if (!selectedRole) {
+      toast.error('Please select a job role first');
+      return;
+    }
+    if (!difficulty) {
+      toast.error('Please select a difficulty level');
+      return;
+    }
+    const apiDifficulty = difficulty === 'beginner' ? 'easy' :
+                         difficulty === 'advanced' ? 'hard' : 'medium';
+    setPendingStart({ role: selectedRole, apiDifficulty, fromTemplate: false });
+  };
+
+  const confirmStart = () => {
+    if (!pendingStart) return;
+    const start = pendingStart;
+    setPendingStart(null);
+    beginSession(start);
+  };
+
+  const cancelStart = () => {
+    const wasTemplate = pendingStart?.fromTemplate;
+    setPendingStart(null);
+    if (wasTemplate) {
+      navigate('/templates');
     }
   };
 
@@ -530,6 +546,7 @@ const InterviewSession = () => {
     if (!currentSession) return;
     
     setIsEndingInterview(true);
+    stopSessionTimer();
     try {
       const result = await interviewService.endSession(currentSession.id);
       setSummary(result.summary);
@@ -546,9 +563,10 @@ const InterviewSession = () => {
 
   const resetInterview = () => {
     stopTimer();
+    stopSessionTimer();
     setPhase('setup');
     setSelectedRole('');
-    setDifficulty('intermediate');
+    setDifficulty('');
     setCurrentSession(null);
     setMessages([]);
     setCurrentQuestion('');
@@ -584,8 +602,15 @@ const InterviewSession = () => {
 
   if (phase === 'setup') {
     return (
-      <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
-        <div className="container-responsive py-8">
+      <>
+        <StartInterviewConfirmModal
+          open={!!pendingStart}
+          credits={currentUser?.sessionCredits ?? 0}
+          onConfirm={confirmStart}
+          onCancel={cancelStart}
+        />
+        <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
+          <div className="container-responsive py-8">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-light-text dark:text-dark-text mb-2">
@@ -607,7 +632,7 @@ const InterviewSession = () => {
               <div className="px-4 pb-4 text-center border-t border-light-border dark:border-dark-border pt-4">
                 <Button
                   onClick={startNewSession}
-                  disabled={!selectedRole || isLoading}
+                  disabled={!selectedRole || !difficulty || isLoading}
                   className="px-8 py-3 text-base font-medium bg-gradient-to-r from-forest to-forest/90 hover:from-forest/90 hover:to-forest text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
@@ -627,6 +652,7 @@ const InterviewSession = () => {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
@@ -813,15 +839,14 @@ const InterviewSession = () => {
                     <span>Question {questionCount}{sessionHasLimit ? ` / ${MAX_QUESTIONS}` : ''}</span>
                     <span>•</span>
                     <span>{answerCount} answered</span>
-                    {timerRunning && (
+                    {sessionTimerRunning && (
                       <>
                         <span>•</span>
-                        <span className={`font-mono transition-colors ${
-                          elapsed > 120 ? 'text-red-400 dark:text-red-400' :
-                          elapsed > 60  ? 'text-yellow-500 dark:text-yellow-400' :
-                          ''
-                        }`}>
-                          ⏱ {formatTime(elapsed)}
+                        <span
+                          className="font-mono"
+                          title="Total interview time"
+                        >
+                          ⏱ {formatTime(sessionElapsed)}
                         </span>
                       </>
                     )}
@@ -871,7 +896,17 @@ const InterviewSession = () => {
                   </div>
                 )}
                 
-                {messages.map((message, index) => (
+                {messages.map((message, index) => {
+                  const nextMsg = messages[index + 1];
+                  const isAnswered = message.sender === 'ai' && nextMsg && nextMsg.sender === 'user';
+                  const isActiveQuestion =
+                    message.sender === 'ai' &&
+                    !message.isStreaming &&
+                    !!message.text &&
+                    !isAnswered &&
+                    index === messages.length - 1;
+                  const answeredTime = isAnswered ? nextMsg.timeTaken : undefined;
+                  return (
                   <div
                     key={index}
                     className={`w-full ${index > 0 ? 'mt-8' : ''}`}
@@ -968,7 +1003,20 @@ const InterviewSession = () => {
 
                           {/* Alex Message */}
                           <div className="text-left">
-                            <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1 ml-1">Alex</div>
+                            <div className="flex items-center gap-2 mb-1 ml-1">
+                              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Alex</span>
+                              {isActiveQuestion && timerRunning && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                  {formatTime(elapsed)}
+                                </span>
+                              )}
+                              {answeredTime !== undefined && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                                  Taken {formatTime(answeredTime)}
+                                </span>
+                              )}
+                            </div>
                             <div className="inline-block px-5 py-4 rounded-2xl shadow-md max-w-3xl bg-white dark:bg-dark-muted border border-gray-200 dark:border-gray-700 text-light-text dark:text-dark-text">
                               <p className="text-base leading-relaxed whitespace-pre-wrap">
                                 {message.text || (message.isStreaming ? '\u00A0' : '')}
@@ -982,8 +1030,9 @@ const InterviewSession = () => {
                       </div>
                     )}
                   </div>
-                ))}
-                
+                  );
+                })}
+
                 {isGeneratingQuestion && !messages.some(m => m.isStreaming) && (
                   <div className="flex justify-start mt-8">
                     <div className="flex items-start space-x-4 max-w-4xl">

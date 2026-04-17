@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './LoadingSpinner';
+import StartInterviewConfirmModal from './StartInterviewConfirmModal';
+import { useAuth } from '../contexts/AuthContext';
 
 const MockInterviewTemplates = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [hoveredId, setHoveredId] = useState(null);
+  const [pendingTemplate, setPendingTemplate] = useState(null);
 
   const templates = [
     {
@@ -94,13 +98,31 @@ const MockInterviewTemplates = () => {
   };
 
   const handleStartTemplate = (template) => {
+    setPendingTemplate(template);
+  };
+
+  const handleConfirmStart = () => {
+    const template = pendingTemplate;
+    if (!template) return;
+    setPendingTemplate(null);
     navigate('/interview', {
       state: { role: template.role, difficulty: template.difficulty, template },
     });
   };
 
+  const handleCancelStart = () => {
+    setPendingTemplate(null);
+  };
+
   return (
     <div className="container-responsive section-spacing">
+
+      <StartInterviewConfirmModal
+        open={!!pendingTemplate}
+        credits={currentUser?.sessionCredits ?? 0}
+        onConfirm={handleConfirmStart}
+        onCancel={handleCancelStart}
+      />
 
       {/* Page Header */}
       <div className="mb-8 sm:mb-10">

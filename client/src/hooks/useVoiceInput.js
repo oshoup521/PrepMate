@@ -46,8 +46,9 @@ export function useVoiceInput() {
         let interim = '';
         let final = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i].transcript;
-          if (event.results[i].isFinal) final += t;
+          const result = event.results[i];
+          const t = result[0]?.transcript ?? '';
+          if (result.isFinal) final += t;
           else interim += t;
         }
         onResultRef.current?.(final || interim, !!final);
