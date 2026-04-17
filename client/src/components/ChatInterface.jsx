@@ -60,13 +60,13 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
       const scrollHeight = textareaRef.current.scrollHeight;
       const maxHeight = 120;
       textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
-      setIsExpanded(scrollHeight > 56);
+      setIsExpanded(scrollHeight > 48);
     }
   }, [message]);
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+      <div className="flex gap-3 items-end">
         {/* Message Input */}
         <div className="flex-1 relative">
           <textarea
@@ -92,13 +92,13 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
               focus:outline-none focus:ring-2 focus:ring-forest/20 dark:focus:ring-sage/20
               focus:border-forest dark:focus:border-sage
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${isExpanded ? 'min-h-[80px]' : 'min-h-[56px]'}
+              ${isExpanded ? 'min-h-[80px]' : 'min-h-[48px]'}
             `}
             rows={1}
             style={{ maxHeight: '120px', overflowY: 'auto' }}
           />
 
-          {/* Mic button — bottom-left inside the textarea */}
+          {/* Mic button — vertically centered, left inside the textarea */}
           {showVoiceBtn && (
             <button
               type="button"
@@ -106,7 +106,7 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
               disabled={isDisabled}
               title={isListening ? 'Stop dictation' : 'Dictate answer'}
               className={`
-                absolute bottom-2 left-2 p-1.5 rounded-lg transition-all duration-200
+                absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all duration-200
                 disabled:opacity-40 disabled:cursor-not-allowed
                 ${isListening
                   ? 'text-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse'
@@ -129,8 +129,8 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
             </button>
           )}
 
-          {/* Character count — bottom-right */}
-          <div className="absolute bottom-2 right-3 text-xs text-light-text/40 dark:text-dark-text/40">
+          {/* Character count — vertically centered, right */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-light-text/40 dark:text-dark-text/40">
             {message.length}/1000
           </div>
         </div>
@@ -145,10 +145,10 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
               ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-forest to-forest/90 hover:from-forest/90 hover:to-forest text-white hover:shadow-lg hover:scale-105 active:scale-95'
             }
-            px-6 py-3 sm:px-8 sm:py-4
-            ${isExpanded ? 'h-[80px]' : 'h-[56px]'}
+            px-6
             flex items-center justify-center
             min-w-[120px]
+            ${isExpanded ? 'h-[80px]' : 'h-[48px]'}
           `}
         >
           {isDisabled ? (

@@ -57,6 +57,189 @@ export class InterviewService {
     'qa-engineer': 'QA Engineer',
   };
 
+  private readonly FALLBACK_QUESTIONS: Record<string, Record<string, string[]>> = {
+    'Software Engineer': {
+      easy: [
+        "What is the difference between a stack and a queue? Can you give a real-world example of each?",
+        "Can you explain what version control is and why it matters to a development team?",
+        "What does DRY stand for, and why is it an important principle in software development?",
+        "What is the difference between a compiled language and an interpreted language?",
+      ],
+      medium: [
+        "Walk me through how you would debug a performance issue that only appears in production.",
+        "How do you ensure code quality and maintainability when working on a team project?",
+        "Can you describe the SOLID principles and give an example of how you've applied one?",
+        "Tell me about a challenging technical problem you solved recently. What was your approach?",
+      ],
+      hard: [
+        "How would you design a distributed rate-limiting system that works across multiple server instances?",
+        "Describe your approach to designing a system that needs to handle 1 million concurrent users.",
+        "How would you migrate a monolithic application to microservices with zero downtime?",
+        "Explain the trade-offs between consistency and availability in distributed systems.",
+      ],
+    },
+    'Frontend Developer': {
+      easy: [
+        "What is the difference between HTML, CSS, and JavaScript? How do they work together?",
+        "Can you explain what responsive design is and how you implement it?",
+        "What is the difference between `let`, `const`, and `var` in JavaScript?",
+        "What is the DOM and how does JavaScript interact with it?",
+      ],
+      medium: [
+        "How do you optimize a React application for performance? Give specific examples.",
+        "Can you explain the concept of state management and when you would use a library like Redux?",
+        "How do you approach cross-browser compatibility in your frontend projects?",
+        "Tell me about a challenging UI component you built. What made it difficult and how did you solve it?",
+      ],
+      hard: [
+        "How would you architect a large-scale React application with multiple teams working on it?",
+        "Describe your approach to implementing micro-frontends. What are the trade-offs?",
+        "How would you design a real-time collaborative UI that stays in sync across multiple users?",
+        "Explain how you would build a design system from scratch and ensure adoption across teams.",
+      ],
+    },
+    'Backend Developer': {
+      easy: [
+        "Can you explain the difference between REST and GraphQL APIs?",
+        "What is a database index and why is it important for performance?",
+        "What is the difference between authentication and authorization?",
+        "Can you explain what an ORM is and when you would use one?",
+      ],
+      medium: [
+        "How would you design an API that needs to handle file uploads and processing?",
+        "Describe how you would implement rate limiting in a backend service.",
+        "How do you approach database schema design for a new feature?",
+        "Tell me about a time you had to optimize a slow database query. What was your process?",
+      ],
+      hard: [
+        "How would you design a backend system that processes millions of events per day reliably?",
+        "Explain how you would implement a distributed transaction across multiple microservices.",
+        "How would you design a caching strategy for a system with complex data relationships?",
+        "Describe your approach to ensuring data consistency in an eventual consistency model.",
+      ],
+    },
+    'Full Stack Developer': {
+      easy: [
+        "How does a web request travel from the browser to a server and back?",
+        "Can you explain the difference between client-side and server-side rendering?",
+        "What is CORS and why does it exist?",
+        "Describe the differences between cookies, localStorage, and sessionStorage.",
+      ],
+      medium: [
+        "How do you decide what logic to put on the frontend versus the backend?",
+        "Tell me about a full-stack feature you built end-to-end. What were the key decisions?",
+        "How do you handle authentication in a full-stack application?",
+        "What is your approach to API design when you control both the frontend and backend?",
+      ],
+      hard: [
+        "How would you design a real-time notification system for a social media platform?",
+        "Describe how you would architect a full-stack application for global scale.",
+        "How would you approach building a collaborative feature like Google Docs from scratch?",
+        "Explain how you would handle state synchronization between the client and server.",
+      ],
+    },
+    'Data Scientist': {
+      easy: [
+        "What is the difference between supervised and unsupervised learning?",
+        "Can you explain what overfitting is and how you can prevent it?",
+        "What is the purpose of cross-validation in machine learning?",
+        "What is the difference between precision and recall? When would you optimize for each?",
+      ],
+      medium: [
+        "How do you handle missing data in a dataset? What are the trade-offs of different approaches?",
+        "Can you walk me through your approach to a binary classification problem from start to finish?",
+        "How do you communicate complex model results to non-technical stakeholders?",
+        "Tell me about a data project where the results surprised you. What did you learn?",
+      ],
+      hard: [
+        "How would you design an A/B testing framework for a large-scale production system?",
+        "Describe your approach to building a recommendation system at scale.",
+        "How would you detect and handle data drift in a production ML model?",
+        "Explain how you would approach building a real-time anomaly detection system.",
+      ],
+    },
+    'DevOps Engineer': {
+      easy: [
+        "What is the difference between continuous integration and continuous deployment?",
+        "Can you explain what containerization is and why Docker is popular?",
+        "What is infrastructure as code and what are its benefits?",
+        "What is the purpose of a load balancer?",
+      ],
+      medium: [
+        "How would you design a CI/CD pipeline for a microservices application?",
+        "Describe your approach to monitoring and alerting for a production system.",
+        "How do you handle secrets management in a cloud environment?",
+        "Tell me about a production incident you responded to. How did you handle it?",
+      ],
+      hard: [
+        "How would you design a zero-downtime deployment strategy for a critical production service?",
+        "Describe how you would implement disaster recovery for a multi-region application.",
+        "How would you approach reducing cloud infrastructure costs without impacting reliability?",
+        "Explain how you would design a Kubernetes cluster for a high-availability application.",
+      ],
+    },
+    'Product Manager': {
+      easy: [
+        "How do you define and measure the success of a product feature?",
+        "Can you explain what a user story is and how you write a good one?",
+        "What is the difference between an MVP and a finished product?",
+        "How do you prioritize features when everything seems equally important?",
+      ],
+      medium: [
+        "Walk me through how you would handle a situation where engineering says a feature is too complex to build on time.",
+        "How do you gather and incorporate user feedback into your product decisions?",
+        "Tell me about a product decision you made that did not go as expected. What did you learn?",
+        "How do you align stakeholders with different goals and priorities?",
+      ],
+      hard: [
+        "How would you build and execute a go-to-market strategy for a new product in a competitive space?",
+        "Describe how you would approach building a product roadmap when you have limited data.",
+        "How do you balance short-term business goals with long-term product vision?",
+        "Tell me about a time you had to pivot a product strategy. How did you make the decision?",
+      ],
+    },
+    'UX Designer': {
+      easy: [
+        "What is the difference between UX design and UI design?",
+        "Can you explain what a user persona is and how it helps in the design process?",
+        "What are some common usability heuristics you consider in your designs?",
+        "How do you approach designing for accessibility?",
+      ],
+      medium: [
+        "Walk me through your design process from research to final handoff.",
+        "How do you conduct user research and how does it influence your design decisions?",
+        "Tell me about a design you are particularly proud of. What made it successful?",
+        "How do you handle conflicting feedback from stakeholders versus users?",
+      ],
+      hard: [
+        "How would you design a complex enterprise product for users with varying levels of technical expertise?",
+        "Describe how you would rebuild the UX of an existing product with poor usability without alienating current users.",
+        "How do you measure the impact of UX improvements on business metrics?",
+        "Tell me about a time you advocated for a user-centered approach against business pressure. What was the outcome?",
+      ],
+    },
+    'QA Engineer': {
+      easy: [
+        "What is the difference between black-box and white-box testing?",
+        "Can you explain the difference between a bug and a feature request?",
+        "What is regression testing and why is it important?",
+        "What makes a good test case? Can you walk me through writing one?",
+      ],
+      medium: [
+        "How do you decide what to automate versus what to test manually?",
+        "Describe your approach to testing a new feature from start to finish.",
+        "How do you handle a situation where you find a critical bug right before a release?",
+        "Tell me about a time your testing caught a significant issue. What was your process?",
+      ],
+      hard: [
+        "How would you design a test strategy for a microservices system with many service dependencies?",
+        "Describe how you would build an end-to-end test suite that is reliable and maintainable at scale.",
+        "How would you approach performance testing a system expected to handle 100,000 concurrent users?",
+        "Explain how you would shift quality left in a development organization.",
+      ],
+    },
+  };
+
   private normalizeRole(role: string): string {
     if (!role) return role;
     const trimmed = role.trim();
@@ -83,7 +266,49 @@ export class InterviewService {
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
       throw new Error('User ID is required and must be a non-empty string');
     }
-  }  private async callAIWithTimeout<T>(
+  }
+
+  private getFallbackQuestion(role: string, difficulty: string, context?: string): { question: string; context: string } {
+    const difficultyKey = difficulty === 'easy' ? 'easy' : difficulty === 'hard' ? 'hard' : 'medium';
+    const roleQuestions = this.FALLBACK_QUESTIONS[role] ?? this.FALLBACK_QUESTIONS['Software Engineer'];
+    const questions = roleQuestions[difficultyKey] ?? roleQuestions['medium'];
+
+    // Use context length as a lightweight seed to vary questions across calls
+    const idx = context ? (context.length % questions.length) : Math.floor(Math.random() * questions.length);
+    return {
+      question: questions[idx],
+      context: 'Ideal answers should demonstrate clear thinking, relevant experience, and concrete examples.',
+    };
+  }
+
+  private getFallbackEvaluation(answer: string): { score: number; feedback: string; improvement_areas: string; isFallback: boolean } {
+    const len = answer.trim().length;
+    let score: number;
+    let feedback: string;
+    let improvement_areas: string;
+
+    if (len < 50) {
+      score = 4;
+      feedback = "Thanks for your response. I'd love to hear more detail — expanding on your reasoning helps me understand your thinking process.";
+      improvement_areas = "Try to provide more depth. Walk through your thought process step by step and include concrete examples or experiences.";
+    } else if (len < 200) {
+      score = 5;
+      feedback = "Good start! You touched on some key points. Adding specific examples from your experience would strengthen this answer considerably.";
+      improvement_areas = "Build on this foundation by including real-world examples and exploring the 'why' behind your decisions.";
+    } else if (len < 500) {
+      score = 6;
+      feedback = "Nice work covering the main points. Your answer shows a solid understanding of the topic. More specific technical details would take this to the next level.";
+      improvement_areas = "Consider adding concrete examples from past experience and exploring edge cases or trade-offs in your answers.";
+    } else {
+      score = 7;
+      feedback = "Well done — you gave a thorough and detailed response that covers the topic well. It's clear you've thought about this.";
+      improvement_areas = "Keep refining your answers to be concise while maintaining depth — interviewers appreciate both thoroughness and clarity.";
+    }
+
+    return { score, feedback, improvement_areas, isFallback: true };
+  }
+
+  private async callAIWithTimeout<T>(
     prompt: string,
     timeoutMs: number = 30000,
     maxRetries: number = 3
@@ -370,8 +595,12 @@ After the question, on a new line write exactly "---" and then write the ideal a
         data: { question, context: questionContext, role, difficulty, timestamp: new Date().toISOString() },
       };
     } catch (error) {
-      this.logger.error('Error in question stream:', error);
-      yield { type: 'error', content: error.message };
+      this.logger.warn(`AI question stream failed, using fallback question: ${error.message}`);
+      const fallback = this.getFallbackQuestion(role, difficulty, context);
+      yield {
+        type: 'done',
+        data: { ...fallback, role, difficulty, timestamp: new Date().toISOString(), isFallback: true },
+      };
     }
   }
 
@@ -438,8 +667,12 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
         },
       };
     } catch (error) {
-      this.logger.error('Error in evaluation stream:', error);
-      yield { type: 'error', content: error.message };
+      this.logger.warn(`AI evaluation stream failed, using fallback evaluation: ${error.message}`);
+      const fallback = this.getFallbackEvaluation(answer);
+      yield {
+        type: 'done',
+        data: { ...fallback, timestamp: new Date().toISOString() },
+      };
     }
   }
 
@@ -460,12 +693,11 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
         throw new Error('Description must be less than 500 characters');
       }
 
-      // Credit gating: each session costs 1 credit
+      // Credit gating: check credits before allowing session start (deduction happens at session end)
       const user = await this.usersService.findById(userId);
       if (!user || user.sessionCredits <= 0) {
         throw new ForbiddenException('No session credits remaining. Purchase a pack to continue.');
       }
-      await this.usersService.deductSessionCredit(userId);
 
       this.logger.debug(`Creating session for user: ${userId}, role: ${jobRole}, difficulty: ${difficulty}`);      const session = this.interviewSessionRepository.create({
         userId,
@@ -961,19 +1193,25 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
             summary = await this.generateInterviewSummary(sessionId, userId);
           } catch (summaryError) {
             this.logger.warn(`Failed to generate AI summary, using fallback: ${summaryError.message}`);
-            // Provide a fallback summary with a basic score
+            // Calculate score from stored per-question evaluations when AI is unavailable
+            const evalScores = (session.evaluations ?? [])
+              .filter(e => e && typeof e.score === 'number')
+              .map(e => e.score as number);
+            const calculatedScore = evalScores.length > 0
+              ? Math.round(evalScores.reduce((a, b) => a + b, 0) / evalScores.length)
+              : 6;
             summary = {
               totalQuestions: session.questions.length,
               totalAnswers: session.answers.length,
-              overallScore: 7, // Default score for completed sessions
-              feedback: 'Interview completed successfully. AI analysis temporarily unavailable.',
-              strengths: ['Completed the interview session'],
-              improvements: ['Continue practicing to improve your skills'],
+              overallScore: calculatedScore,
+              feedback: 'Interview completed successfully. AI analysis is temporarily unavailable — your score is based on per-question evaluations.',
+              strengths: ['Completed the interview session', 'Demonstrated effort across all questions'],
+              improvements: ['Continue practicing to sharpen your answers', 'Review topics covered in this session'],
               detailedFeedback: session.questions.map((q, index) => ({
                 question: q,
                 answer: session.answers[index] || 'No answer provided',
-                feedback: 'Answer recorded successfully.'
-              }))
+                feedback: session.evaluations?.[index]?.feedback || 'Answer recorded successfully.',
+              })),
             };
           }
         }
@@ -997,6 +1235,9 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
         summary: summary,
         updatedAt: new Date()
       });
+
+      // Deduct session credit now that the interview is completed
+      await this.usersService.deductSessionCredit(userId);
 
       // Clear relevant caches
       await this.cacheService.del(`user_sessions:${userId}`);

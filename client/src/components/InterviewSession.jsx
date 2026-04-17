@@ -10,6 +10,28 @@ import { showSuccessToast, showErrorToast } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
 import { useQuestionTimer } from '../hooks/useQuestionTimer';
 import { useAuth } from '../contexts/AuthContext';
+import axios from '../utils/axiosConfig';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+const SESSION_PACKS = [
+  { key: 'starter', label: 'Starter', sessions: 5,  price: 149, badge: null },
+  { key: 'popular', label: 'Popular', sessions: 15, price: 299, badge: 'Most Popular' },
+  { key: 'power',   label: 'Power',   sessions: 30, price: 499, badge: 'Best Deal' },
+];
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (document.getElementById('razorpay-script')) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.id = 'razorpay-script';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -17,7 +39,7 @@ const InterviewSession = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionId = searchParams.get('sessionId');
-  const { refreshUser } = useAuth();
+  const { refreshUser, currentUser } = useAuth();
   
   // Core state
   const [phase, setPhase] = useState('setup'); // 'setup', 'interview', 'completed'
@@ -33,6 +55,10 @@ const InterviewSession = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [isEndingInterview, setIsEndingInterview] = useState(false);
+
+  // Upgrade modal (shown when free user hits 10-question limit)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [loadingPack, setLoadingPack] = useState(null);
 
   // Per-question timing
   const { elapsed, isRunning: timerRunning, start: startTimer, stop: stopTimer } = useQuestionTimer();
@@ -157,8 +183,7 @@ const InterviewSession = () => {
       const session = await interviewService.createSession(selectedRole, apiDifficulty);
       setCurrentSession(session);
       setPhase('interview');
-      refreshUser();
-      
+
       await generateQuestion();
       
       // Scroll to bottom after starting session
@@ -332,16 +357,20 @@ const InterviewSession = () => {
     if (!answer.trim() || !currentQuestion) return;
 
     const timeTaken = stopTimer();
+    // Compute before any state update so the count is stable inside the closure
+    const answeredCount = messages.filter(m => m.sender === 'user').length + 1;
+    const isLastQuestion = sessionHasLimit && answeredCount >= MAX_QUESTIONS;
+    // Index of the message we are about to push (stable closure snapshot)
+    const newMsgIndex = messages.length;
 
-    // Add user answer to chat (initially without score)
-    const userMessageIndex = messages.length + 1;
     setMessages(prev => [...prev, { sender: 'user', text: answer, isEvaluating: true, timeTaken }]);
     setQuestionTimings(prev => [...prev, timeTaken]);
-    scrollToBottom(150); // Scroll after user answer is added
+    scrollToBottom(150);
     setIsLoading(true);
-    
+    let savedSuccessfully = false;
+
     try {
-      // Evaluate the answer with streaming feedback
+      // Evaluate with streaming feedback (same for all questions including the 10th)
       let evaluation = null;
       try {
         evaluation = await new Promise((resolve, reject) => {
@@ -350,9 +379,8 @@ const InterviewSession = () => {
             answer,
             selectedRole,
             (token) => {
-              // Show partial feedback as it streams in (skip the SCORE: first line)
               setMessages(prev => prev.map((msg, index) => {
-                if (index !== userMessageIndex - 1) return msg;
+                if (index !== newMsgIndex) return msg;
                 const raw = (msg._evalRaw || '') + token;
                 const newlineIdx = raw.indexOf('\n');
                 const feedbackSoFar = newlineIdx !== -1 ? raw.slice(newlineIdx + 1).split('\n---')[0] : '';
@@ -364,40 +392,103 @@ const InterviewSession = () => {
           );
         });
       } catch (evalError) {
-        console.error('Failed to evaluate answer:', evalError);
-        // Continue without evaluation if streaming fails
+        console.error('Failed to evaluate answer, using fallback:', evalError);
+        const answerLen = answer.trim().length;
+        evaluation = {
+          score: answerLen > 500 ? 7 : answerLen > 200 ? 6 : answerLen > 50 ? 5 : 4,
+          feedback: 'Your answer has been recorded. AI evaluation is temporarily unavailable.',
+          improvement_areas: 'Continue practicing and elaborate on your answers with specific examples.',
+          isFallback: true,
+        };
       }
 
-      // Update the user message with final evaluation results
+      // Update message with final evaluation
       setMessages(prev => prev.map((msg, index) =>
-        index === userMessageIndex - 1 ? {
+        index === newMsgIndex ? {
           ...msg,
           isEvaluating: false,
           streamingFeedback: undefined,
           _evalRaw: undefined,
-          evaluation: evaluation,
+          evaluation,
         } : msg
       ));
       scrollToBottom(100);
 
-      // Save answer to session
       await interviewService.addQuestionAnswer(currentSession.id, currentQuestion, answer, evaluation);
-      
-      // Generate next question
-      await generateQuestion();
+      savedSuccessfully = true;
+
+      if (!isLastQuestion) {
+        await generateQuestion();
+      }
     } catch (error) {
       console.error('Failed to process answer:', error);
       showErrorToast('Failed to process your answer');
-      
-      // Remove evaluation loading state on error
-      setMessages(prev => prev.map((msg, index) => 
-        index === userMessageIndex - 1 ? { 
-          ...msg, 
-          isEvaluating: false 
-        } : msg
+      setMessages(prev => prev.map((msg, index) =>
+        index === newMsgIndex ? { ...msg, isEvaluating: false } : msg
       ));
     } finally {
       setIsLoading(false);
+    }
+
+    // After evaluation is shown for the 10th answer, present the upgrade modal
+    if (savedSuccessfully && isLastQuestion) {
+      setShowUpgradeModal(true);
+    }
+  };
+
+  const handleInSessionPurchase = async (packKey) => {
+    if (!RAZORPAY_KEY_ID) {
+      toast.error('Payment is not configured yet. Please try again later.');
+      return;
+    }
+    setLoadingPack(packKey);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        toast.error('Failed to load payment gateway. Check your connection.');
+        setLoadingPack(null);
+        return;
+      }
+
+      const { data } = await axios.post(`${API_URL}/payment/create-order`, { pack: packKey });
+      const { orderId, amount, currency, sessions, label } = data;
+
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount,
+        currency,
+        name: 'PrepMate',
+        description: `${label} Pack — ${sessions} interview sessions`,
+        order_id: orderId,
+        handler: async (response) => {
+          try {
+            const res = await axios.post(`${API_URL}/payment/verify`, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              pack: packKey,
+            });
+            await refreshUser();
+            toast.success(`${res.data.sessionsAdded} sessions added — continuing your interview!`);
+            setShowUpgradeModal(false);
+            await generateQuestion();
+          } catch {
+            toast.error('Payment verification failed. Contact support if amount was deducted.');
+          }
+        },
+        prefill: {
+          name: currentUser?.name || '',
+          email: currentUser?.email || '',
+        },
+        theme: { color: '#537D5D' },
+        modal: { ondismiss: () => setLoadingPack(null) },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
+      setLoadingPack(null);
     }
   };
 
@@ -410,7 +501,7 @@ const InterviewSession = () => {
       setSummary(result.summary);
       setPhase('completed');
       setShowConfetti(true);
-      showSuccessToast('Interview completed!');
+      refreshUser();
     } catch (error) {
       console.error('Failed to end interview:', error);
       showErrorToast('Failed to end interview');
@@ -432,6 +523,12 @@ const InterviewSession = () => {
     setQuestionTimings([]);
     navigate('/interview');
   };
+
+  const MAX_QUESTIONS = 10;
+  // Free users (never purchased) are capped at MAX_QUESTIONS per session.
+  // Once any pack is bought, totalSessionCredits exceeds the free default of 3.
+  const hasPurchased = (currentUser?.totalSessionCredits ?? 3) > 3;
+  const sessionHasLimit = !hasPurchased;
 
   // Render different phases
   if (phase === 'completed') {
@@ -497,6 +594,158 @@ const InterviewSession = () => {
 
   return (
     <div className="interview-layout bg-gradient-to-br from-light-bg via-light-bg to-forest/5 dark:from-dark-bg dark:via-dark-bg dark:to-sage/5">
+
+      {/* Summary generation overlay */}
+      {isEndingInterview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
+          <div className="bg-white dark:bg-dark-muted rounded-2xl shadow-2xl px-10 py-12 flex flex-col items-center gap-5 max-w-sm w-full mx-4 text-center">
+            {/* Animated rings */}
+            <div className="relative flex items-center justify-center">
+              <span className="absolute inline-flex h-20 w-20 rounded-full bg-forest/20 dark:bg-sage/20 animate-ping" />
+              <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-forest/10 dark:bg-sage/10">
+                <svg
+                  className="h-8 w-8 animate-spin text-forest dark:text-sage"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12" cy="12" r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-light-text dark:text-dark-text">
+                Generating Score Summary
+              </h2>
+              <p className="text-sm text-light-text/60 dark:text-dark-text/50 mt-1.5">
+                Alex is reviewing your performance…
+              </p>
+            </div>
+            {/* Animated dots */}
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map(i => (
+                <span
+                  key={i}
+                  className="h-2 w-2 rounded-full bg-forest dark:bg-sage animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade modal — shown when free user hits the 10-question cap */}
+      {showUpgradeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowUpgradeModal(false); endInterview(); } }}
+        >
+          <div className="bg-white dark:bg-dark-muted rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+
+            {/* Top band */}
+            <div className="bg-gradient-to-r from-forest/10 to-sage/10 dark:from-forest/20 dark:to-sage/20 px-6 py-5 text-center border-b border-forest/10 dark:border-forest/20">
+              <div className="w-12 h-12 rounded-full bg-forest/10 dark:bg-forest/20 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-forest dark:text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-light-text dark:text-dark-text">
+                You've answered 10 questions!
+              </h2>
+              <p className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
+                Free sessions are limited to 10 questions. Buy a pack to keep this interview going — no restart needed.
+              </p>
+            </div>
+
+            {/* How the math works — shown only to first-time buyers */}
+            {(() => {
+              const freeCredits = currentUser?.sessionCredits ?? 0;
+              const isFirstBuyer = (currentUser?.totalSessionCredits ?? 3) <= 3;
+              if (!isFirstBuyer) return null;
+              return (
+                <div className="mx-5 mt-4 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  <span className="font-semibold">How this works:</span> Your {freeCredits} free session{freeCredits !== 1 ? 's' : ''} count toward whichever pack you choose — they are not added on top. You get exactly the number of sessions shown below, all unlimited.
+                </div>
+              );
+            })()}
+
+            {/* Pack options */}
+            <div className="px-5 py-4 space-y-2.5">
+              {SESSION_PACKS.map((pack) => {
+                const freeCredits = currentUser?.sessionCredits ?? 0;
+                const isFirstBuyer = (currentUser?.totalSessionCredits ?? 3) <= 3;
+                // Net sessions after purchase (first buyers: max not add; repeat buyers: add)
+                const netSessions = isFirstBuyer ? Math.max(freeCredits, pack.sessions) : freeCredits + pack.sessions;
+                const addedNew = isFirstBuyer ? Math.max(0, pack.sessions - freeCredits) : pack.sessions;
+                return (
+                  <button
+                    key={pack.key}
+                    onClick={() => handleInSessionPurchase(pack.key)}
+                    disabled={!!loadingPack}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-150 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed ${
+                      pack.key === 'popular'
+                        ? 'border-forest bg-forest/5 dark:bg-forest/10 hover:bg-forest/10 dark:hover:bg-forest/20'
+                        : 'border-light-border dark:border-dark-border hover:bg-light-bg dark:hover:bg-dark-bg'
+                    }`}
+                  >
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-light-text dark:text-dark-text">{pack.label}</span>
+                        {pack.badge && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white uppercase tracking-wide">
+                            {pack.badge}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-light-text/50 dark:text-dark-text/50">
+                        {isFirstBuyer
+                          ? `${freeCredits} free unlocked + ${addedNew} new = ${netSessions} sessions total`
+                          : `${pack.sessions} sessions added · ${netSessions} total`
+                        } · unlimited questions
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {loadingPack === pack.key ? (
+                        <svg className="w-4 h-4 animate-spin text-forest" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : (
+                        <span className="text-sm font-bold text-forest dark:text-sage">₹{pack.price}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 pb-5 pt-1 text-center space-y-2">
+              <p className="text-xs text-light-text/40 dark:text-dark-text/40">
+                Credits stack · Secured by Razorpay · No subscription
+              </p>
+              <button
+                onClick={() => { setShowUpgradeModal(false); endInterview(); }}
+                className="text-xs text-light-text/40 dark:text-dark-text/40 hover:text-light-text dark:hover:text-dark-text underline underline-offset-2 transition-colors"
+              >
+                No thanks, end session and see my results
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Fixed Header */}
       <div className="flex-shrink-0 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-md border-b border-forest/10 dark:border-sage/20 shadow-sm z-40">
         <div className="container-responsive py-3">
@@ -519,7 +768,7 @@ const InterviewSession = () => {
                       {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
                     </span>
                     <span>•</span>
-                    <span>Question {questionCount}</span>
+                    <span>Question {questionCount}{sessionHasLimit ? ` / ${MAX_QUESTIONS}` : ''}</span>
                     <span>•</span>
                     <span>{answerCount} answered</span>
                     {timerRunning && (
@@ -550,7 +799,7 @@ const InterviewSession = () => {
                   disabled={isLoading || isEndingInterview}
                   className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 text-xs px-3 py-1"
                 >
-                  {isEndingInterview ? 'Ending...' : 'End Interview'}
+                  End Interview
                 </Button>
               </div>
             </div>
@@ -741,21 +990,26 @@ const InterviewSession = () => {
         </div>
       </div>
 
-      {/* Elegant End Interview Loader */}
+      {/* End Interview Loader */}
       {isEndingInterview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
-          <div className="bg-white/95 dark:bg-dark-bg/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 mx-4 max-w-sm w-full border border-white/20 dark:border-white/10">
+          <div className="bg-white/95 dark:bg-dark-bg/95 backdrop-blur-xl rounded-3xl shadow-2xl p-10 mx-4 max-w-xs w-full border border-white/20 dark:border-white/10">
             <div className="text-center">
-              {/* Elegant Spinner */}
-              <div className="relative mb-6">
-                <div className="w-12 h-12 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-2 border-forest/30 dark:border-sage/30"></div>
-                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-forest dark:border-t-sage animate-spin"></div>
-                </div>
+              {/* Bar loader */}
+              <div className="flex items-end justify-center gap-1 h-10 mb-6">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div
+                    key={i}
+                    className="w-1.5 rounded-full bg-forest dark:bg-sage"
+                    style={{
+                      animation: 'barPulse 1.2s ease-in-out infinite',
+                      animationDelay: `${i * 0.15}s`,
+                    }}
+                  />
+                ))}
               </div>
 
-              {/* Simple Text */}
-              <h3 className="text-lg font-medium text-light-text dark:text-dark-text mb-2">
+              <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-1">
                 Generating Summary
               </h3>
               <p className="text-sm text-light-text/60 dark:text-dark-text/60">

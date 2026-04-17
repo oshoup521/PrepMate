@@ -110,14 +110,28 @@ export class UsersService {
   ): Promise<void> {
     const user = await this.findById(userId);
     const current = user?.sessionCredits ?? 0;
+    const currentTotal = user?.totalSessionCredits ?? current;
+
+    // First-time purchaser (only has the 3 free credits, never bought before):
+    // free credits are absorbed into the pack — user ends up with exactly
+    // what they paid for, not free + paid stacked.
+    // e.g. 3 free + buy 5 → 5 total (not 8).
+    // Repeat purchasers (already paid before) add credits normally.
+    const isFirstPurchase = currentTotal <= 3;
+    const newCredits = isFirstPurchase ? Math.max(current, credits) : current + credits;
+    const newTotal   = isFirstPurchase ? Math.max(currentTotal, credits) : currentTotal + credits;
+
     await this.usersRepository.update(userId, {
-      sessionCredits: current + credits,
+      sessionCredits: newCredits,
+      totalSessionCredits: newTotal,
       razorpayPaymentId,
       razorpayOrderId,
     });
   }
 
   async deductSessionCredit(userId: string): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user || user.sessionCredits <= 0) return;
     await this.usersRepository.decrement({ id: userId }, 'sessionCredits', 1);
   }
 }

@@ -97,14 +97,6 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Backend Info Note */}
-        <div className="mb-4 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg flex items-center gap-2">
-          <span className="text-amber-500 flex-shrink-0">⚡</span>
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            First request may take <strong>30–60s</strong> to respond — backend on Render wakes up on demand.
-          </p>
-        </div>
-
         {/* Login Card */}
         <div className="card card-elevated p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">

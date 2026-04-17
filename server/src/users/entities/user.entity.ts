@@ -37,6 +37,9 @@ export class User {
   @Column({ default: 3 })
   sessionCredits: number;
 
+  @Column({ default: 3 })
+  totalSessionCredits: number;
+
   @Column({ type: 'text', nullable: true })
   razorpayPaymentId: string | null;
 

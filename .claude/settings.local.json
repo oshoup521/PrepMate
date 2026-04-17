@@ -18,7 +18,10 @@
       "Bash(cmd /c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr :5173 ^| findstr LISTENING'\\) do taskkill /PID %a /F\")",
       "Bash(npx vite:*)",
       "Bash(psql --version)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)",
+      "Bash(git log:*)"
     ]
   }
 }

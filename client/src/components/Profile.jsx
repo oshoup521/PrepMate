@@ -135,8 +135,8 @@ const Profile = () => {
   };
 
   const initials = currentUser?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
-  const credits  = currentUser?.sessionCredits ?? 0;
-  const isPro    = false; // no paid plan tier yet — pay-as-you-go credit model
+  const credits       = currentUser?.sessionCredits ?? 0;
+  const totalCredits  = currentUser?.totalSessionCredits ?? credits;
 
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg">
@@ -157,24 +157,22 @@ const Profile = () => {
             {/* Identity card */}
             <div className="bg-white dark:bg-dark-muted border border-light-border dark:border-dark-border rounded-2xl p-6 shadow-sm">
               {/* Avatar */}
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-md ${isPro ? 'bg-forest' : 'bg-gradient-to-br from-forest to-olive dark:from-sage dark:to-sand'}`}>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-md bg-gradient-to-br from-forest to-olive dark:from-sage dark:to-sand">
                 <span className="text-xl font-bold text-white">{initials}</span>
               </div>
 
-              {/* Name + plan badge */}
+              {/* Name + credit badge */}
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-bold text-light-text dark:text-dark-text leading-tight truncate">
                   {currentUser?.name}
                 </h2>
-                {isPro ? (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-forest text-white tracking-widest uppercase flex-shrink-0">
-                    PRO
-                  </span>
-                ) : (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border border-light-border dark:border-dark-border text-light-text/50 dark:text-dark-text/50 tracking-widest uppercase flex-shrink-0">
-                    FREE
-                  </span>
-                )}
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${
+                  credits > 0
+                    ? 'bg-forest/10 dark:bg-forest/20 text-forest dark:text-sage'
+                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700'
+                }`}>
+                  {credits} {credits === 1 ? 'session' : 'sessions'}
+                </span>
               </div>
 
               {/* Email */}
@@ -306,13 +304,13 @@ const Profile = () => {
                 {/* Credit bar */}
                 <div>
                   <div className="flex justify-between text-xs text-light-text/40 dark:text-dark-text/40 mb-1.5">
-                    <span>Session credits</span>
-                    <span>{credits} remaining</span>
+                    <span>{credits} of {totalCredits} remaining</span>
+                    <span>{totalCredits - credits} used</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${credits > 0 ? 'bg-forest' : 'bg-amber-400'}`}
-                      style={{ width: credits > 0 ? '100%' : '0%' }}
+                      style={{ width: `${totalCredits > 0 ? Math.round((credits / totalCredits) * 100) : 0}%` }}
                     />
                   </div>
                 </div>
