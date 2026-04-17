@@ -4,13 +4,13 @@ import { Button } from './LoadingSpinner';
 import StartInterviewConfirmModal from './StartInterviewConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 
-const MockInterviewTemplates = () => {
+const MockInterviewCoaches = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [hoveredId, setHoveredId] = useState(null);
-  const [pendingTemplate, setPendingTemplate] = useState(null);
+  const [pendingCoach, setPendingCoach] = useState(null);
 
-  const templates = [
+  const coaches = [
     {
       id: 'frontend-react',
       title: 'Frontend Developer — React',
@@ -97,28 +97,28 @@ const MockInterviewTemplates = () => {
     hard:   { label: 'Hard',   classes: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' },
   };
 
-  const handleStartTemplate = (template) => {
-    setPendingTemplate(template);
+  const handleStartCoach = (coach) => {
+    setPendingCoach(coach);
   };
 
   const handleConfirmStart = () => {
-    const template = pendingTemplate;
-    if (!template) return;
-    setPendingTemplate(null);
+    const coach = pendingCoach;
+    if (!coach) return;
+    setPendingCoach(null);
     navigate('/interview', {
-      state: { role: template.role, difficulty: template.difficulty, template },
+      state: { role: coach.role, difficulty: coach.difficulty, coach },
     });
   };
 
   const handleCancelStart = () => {
-    setPendingTemplate(null);
+    setPendingCoach(null);
   };
 
   return (
     <div className="container-responsive section-spacing">
 
       <StartInterviewConfirmModal
-        open={!!pendingTemplate}
+        open={!!pendingCoach}
         credits={currentUser?.sessionCredits ?? 0}
         onConfirm={handleConfirmStart}
         onCancel={handleCancelStart}
@@ -127,35 +127,35 @@ const MockInterviewTemplates = () => {
       {/* Page Header */}
       <div className="mb-8 sm:mb-10">
         <h1 className="text-2xl sm:text-3xl font-bold text-light-text dark:text-dark-text mb-2">
-          Interview <span className="gradient-text">Templates</span>
+          Interview <span className="gradient-text">Coaches</span>
         </h1>
         <p className="text-light-text/60 dark:text-dark-text/60 text-sm sm:text-base">
           Practise with realistic scenarios designed for specific roles and experience levels.
         </p>
       </div>
 
-      {/* Template Grid */}
+      {/* Coach Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {templates.map((template) => {
-          const diff = difficultyConfig[template.difficulty] ?? difficultyConfig.medium;
+        {coaches.map((coach) => {
+          const diff = difficultyConfig[coach.difficulty] ?? difficultyConfig.medium;
           return (
             <div
-              key={template.id}
-              onMouseEnter={() => setHoveredId(template.id)}
+              key={coach.id}
+              onMouseEnter={() => setHoveredId(coach.id)}
               onMouseLeave={() => setHoveredId(null)}
               className={`
                 card flex flex-col overflow-hidden transition-all duration-200
-                ${hoveredId === template.id ? 'shadow-md -translate-y-0.5' : ''}
+                ${hoveredId === coach.id ? 'shadow-md -translate-y-0.5' : ''}
               `}
             >
               {/* Accent strip – inline style guarantees it's never purged by Tailwind */}
-              <div className="h-1.5 w-full" style={{ background: template.strip }} />
+              <div className="h-1.5 w-full" style={{ background: coach.strip }} />
 
               <div className="p-5 flex flex-col flex-1">
                 {/* Icon + difficulty */}
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${template.iconBg}`}>
-                    {template.icon}
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${coach.iconBg}`}>
+                    {coach.icon}
                   </div>
                   <span className={`status-badge ${diff.classes}`}>
                     {diff.label}
@@ -164,7 +164,7 @@ const MockInterviewTemplates = () => {
 
                 {/* Title */}
                 <h3 className="text-base font-bold text-light-text dark:text-dark-text mb-1 leading-snug">
-                  {template.title}
+                  {coach.title}
                 </h3>
 
                 {/* Meta */}
@@ -172,22 +172,22 @@ const MockInterviewTemplates = () => {
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  {template.company}
+                  {coach.company}
                   <span className="text-light-border dark:text-dark-border">•</span>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {template.duration}
+                  {coach.duration}
                 </p>
 
                 {/* Description */}
                 <p className="text-sm text-light-text/70 dark:text-dark-text/70 mb-4 leading-relaxed">
-                  {template.description}
+                  {coach.description}
                 </p>
 
                 {/* Topics */}
                 <div className="flex flex-wrap gap-1.5 mb-5">
-                  {template.topics.map((topic, i) => (
+                  {coach.topics.map((topic, i) => (
                     <span
                       key={i}
                       className="px-2 py-0.5 rounded-md text-xs font-medium bg-forest/8 text-forest dark:bg-sage/10 dark:text-sage border border-forest/15 dark:border-sage/20"
@@ -200,7 +200,7 @@ const MockInterviewTemplates = () => {
                 {/* CTA – pushed to bottom */}
                 <div className="mt-auto">
                   <Button
-                    onClick={() => handleStartTemplate(template)}
+                    onClick={() => handleStartCoach(coach)}
                     variant="primary"
                     fullWidth
                     size="md"
@@ -257,4 +257,4 @@ const MockInterviewTemplates = () => {
   );
 };
 
-export default MockInterviewTemplates;
+export default MockInterviewCoaches;

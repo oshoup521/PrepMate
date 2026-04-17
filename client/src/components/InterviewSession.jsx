@@ -68,17 +68,17 @@ const InterviewSession = () => {
   const sessionId = searchParams.get('sessionId');
   const { refreshUser, currentUser } = useAuth();
 
-  // Template navigation: role + difficulty passed via route state
-  const templateRole = location.state?.role;
-  const templateDifficulty = location.state?.difficulty;
-  const hasTemplateStart = !!templateRole && !!templateDifficulty && !sessionId;
+  // Coach navigation: role + difficulty passed via route state
+  const coachRole = location.state?.role;
+  const coachDifficulty = location.state?.difficulty;
+  const hasCoachStart = !!coachRole && !!coachDifficulty && !sessionId;
 
-  // Core state — start in 'loading' when template auto-start is pending so the setup screen doesn't flash
-  const [phase, setPhase] = useState(hasTemplateStart ? 'loading' : 'setup'); // 'setup', 'loading', 'interview', 'completed'
-  const [selectedRole, setSelectedRole] = useState(hasTemplateStart ? templateRole : '');
+  // Core state — start in 'loading' when coach auto-start is pending so the setup screen doesn't flash
+  const [phase, setPhase] = useState(hasCoachStart ? 'loading' : 'setup'); // 'setup', 'loading', 'interview', 'completed'
+  const [selectedRole, setSelectedRole] = useState(hasCoachStart ? coachRole : '');
   const [difficulty, setDifficulty] = useState(
-    hasTemplateStart
-      ? (templateDifficulty === 'easy' ? 'beginner' : templateDifficulty === 'hard' ? 'advanced' : 'intermediate')
+    hasCoachStart
+      ? (coachDifficulty === 'easy' ? 'beginner' : coachDifficulty === 'hard' ? 'advanced' : 'intermediate')
       : ''
   );
   const [currentSession, setCurrentSession] = useState(null);
@@ -97,7 +97,7 @@ const InterviewSession = () => {
   const [loadingPack, setLoadingPack] = useState(null);
 
   // Start-session confirmation modal (prevents accidental quota burn)
-  const [pendingStart, setPendingStart] = useState(null); // { role, apiDifficulty, fromTemplate }
+  const [pendingStart, setPendingStart] = useState(null); // { role, apiDifficulty, fromCoach }
 
   // Per-question timing (resets each question)
   const { elapsed, isRunning: timerRunning, start: startTimer, stop: stopTimer } = useQuestionTimer();
@@ -124,12 +124,12 @@ const InterviewSession = () => {
       loadExistingSession();
       return;
     }
-    if (hasTemplateStart && !autoStartRef.current) {
+    if (hasCoachStart && !autoStartRef.current) {
       autoStartRef.current = true;
       beginSession({
-        role: templateRole,
-        apiDifficulty: templateDifficulty,
-        fromTemplate: true,
+        role: coachRole,
+        apiDifficulty: coachDifficulty,
+        fromCoach: true,
       });
     }
   }, [sessionId]);
@@ -221,13 +221,13 @@ const InterviewSession = () => {
     }
   };
 
-  const beginSession = async ({ role, apiDifficulty, fromTemplate }) => {
+  const beginSession = async ({ role, apiDifficulty, fromCoach }) => {
     setIsLoading(true);
     try {
       const session = await interviewService.createSession(role, apiDifficulty);
       setCurrentSession(session);
       setPhase('interview');
-      if (fromTemplate) {
+      if (fromCoach) {
         await generateQuestionForSession(role, apiDifficulty);
       } else {
         await generateQuestion();
@@ -237,7 +237,7 @@ const InterviewSession = () => {
     } catch (error) {
       console.error('Failed to start interview:', error);
       showErrorToast('Failed to start interview');
-      if (fromTemplate) setPhase('setup');
+      if (fromCoach) setPhase('setup');
     } finally {
       setIsLoading(false);
     }
@@ -254,7 +254,7 @@ const InterviewSession = () => {
     }
     const apiDifficulty = difficulty === 'beginner' ? 'easy' :
                          difficulty === 'advanced' ? 'hard' : 'medium';
-    setPendingStart({ role: selectedRole, apiDifficulty, fromTemplate: false });
+    setPendingStart({ role: selectedRole, apiDifficulty, fromCoach: false });
   };
 
   const confirmStart = () => {
@@ -265,10 +265,10 @@ const InterviewSession = () => {
   };
 
   const cancelStart = () => {
-    const wasTemplate = pendingStart?.fromTemplate;
+    const wasCoach = pendingStart?.fromCoach;
     setPendingStart(null);
-    if (wasTemplate) {
-      navigate('/templates');
+    if (wasCoach) {
+      navigate('/coaches');
     }
   };
 

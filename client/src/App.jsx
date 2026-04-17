@@ -9,7 +9,7 @@ import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
-import MockInterviewTemplates from './components/MockInterviewTemplates';
+import MockInterviewCoaches from './components/MockInterviewCoaches';
 import Progress from './components/Progress';
 import InterviewSession from './components/InterviewSession';
 import SessionHistory from './components/SessionHistory';
@@ -54,10 +54,10 @@ function AppLayout() {
             }
           />
           <Route
-            path="/templates"
+            path="/coaches"
             element={
               <ProtectedRoute>
-                <MockInterviewTemplates />
+                <MockInterviewCoaches />
               </ProtectedRoute>
             }
           />

@@ -219,7 +219,7 @@ Let users add their own custom questions to their session pool, supplementing or
 ### 4.3 Company-Specific Modes
 **Effort:** Medium | **Impact:** High
 
-*"Prepare for Google / Meta / Amazon"* templates with company-specific question styles and focus areas.
+*"Prepare for Google / Meta / Amazon"* coaches with company-specific question styles and focus areas.
 
 **Implementation:**
 - Create a `companies` config object (static, no DB needed initially):
