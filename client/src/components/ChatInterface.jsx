@@ -5,7 +5,6 @@ const VOICE_ENABLED = import.meta.env.VITE_ENABLE_VOICE_INPUT === 'true';
 
 const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
   const [message, setMessage] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef(null);
   // Snapshot of message at the moment the mic was tapped, so interim text
   // is layered on top rather than replacing existing typed content.
@@ -22,7 +21,6 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
     if (message.trim() && !isDisabled) {
       onSendMessage(message.trim());
       setMessage('');
-      setIsExpanded(false);
     }
   };
 
@@ -58,9 +56,7 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 120;
-      textareaRef.current.style.height = Math.min(scrollHeight, maxHeight) + 'px';
-      setIsExpanded(scrollHeight > 48);
+      textareaRef.current.style.height = Math.min(scrollHeight, 120) + 'px';
     }
   }, [message]);
 
@@ -83,7 +79,7 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
             disabled={isDisabled}
             className={`
               w-full resize-none rounded-xl border transition-all duration-200
-              py-3 text-sm
+              py-3 text-sm min-h-[48px]
               ${showVoiceBtn ? 'pl-10 pr-16' : 'px-4 pr-12'}
               placeholder-light-text/40 dark:placeholder-dark-text/40
               bg-light-bg dark:bg-dark-bg
@@ -92,7 +88,6 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
               focus:outline-none focus:ring-2 focus:ring-forest/20 dark:focus:ring-sage/20
               focus:border-forest dark:focus:border-sage
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${isExpanded ? 'min-h-[80px]' : 'min-h-[48px]'}
             `}
             rows={1}
             style={{ maxHeight: '120px', overflowY: 'auto' }}
@@ -106,7 +101,7 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
               disabled={isDisabled}
               title={isListening ? 'Stop dictation' : 'Dictate answer'}
               className={`
-                absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all duration-200
+                absolute left-2.5 bottom-3 p-1.5 rounded-lg transition-all duration-200
                 disabled:opacity-40 disabled:cursor-not-allowed
                 ${isListening
                   ? 'text-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse'
@@ -129,8 +124,8 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
             </button>
           )}
 
-          {/* Character count — vertically centered, right */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-light-text/40 dark:text-dark-text/40">
+          {/* Character count — bottom right, aligns with textarea padding */}
+          <div className="absolute right-3 bottom-3 text-xs text-light-text/40 dark:text-dark-text/40">
             {message.length}/1000
           </div>
         </div>
@@ -140,15 +135,14 @@ const ChatInterface = ({ onSendMessage, isLoading, disabled, placeholder }) => {
           type="submit"
           disabled={!message.trim() || isDisabled || message.length > 1000}
           className={`
-            transition-all duration-200 flex-shrink-0 rounded-xl font-medium
+            transition-all duration-200 flex-shrink-0 self-stretch min-h-[48px] rounded-xl font-medium
             ${!message.trim() || isDisabled || message.length > 1000
               ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-forest to-forest/90 hover:from-forest/90 hover:to-forest text-white hover:shadow-lg hover:scale-105 active:scale-95'
             }
-            px-6
+            px-3 sm:px-6
             flex items-center justify-center
-            min-w-[120px]
-            ${isExpanded ? 'h-[80px]' : 'h-[48px]'}
+            min-w-[48px] sm:min-w-[120px]
           `}
         >
           {isDisabled ? (
