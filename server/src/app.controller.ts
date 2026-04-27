@@ -16,12 +16,14 @@ export class AppController {
 
   @Get('health')
   @ApiOperation({ summary: 'Health check endpoint' })
-  getHealth() {
+  async getHealth() {
+    const db = await this.appService.checkDbHealth();
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       version: '1.0.0',
+      ...db,
     };
   }
 
