@@ -10,9 +10,21 @@ export class AppService {
     return 'Hello World!';
   }
 
-  async checkDbHealth(): Promise<{ db: string; latencyMs: number }> {
+  async checkDbHealth(): Promise<{
+    db: 'ok' | 'error';
+    latencyMs: number;
+    dbError?: string;
+  }> {
     const start = Date.now();
-    await this.dataSource.query('SELECT 1');
-    return { db: 'ok', latencyMs: Date.now() - start };
+    try {
+      await this.dataSource.query('SELECT 1');
+      return { db: 'ok', latencyMs: Date.now() - start };
+    } catch (err) {
+      return {
+        db: 'error',
+        latencyMs: Date.now() - start,
+        dbError: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 }

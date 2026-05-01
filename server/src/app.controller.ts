@@ -16,15 +16,16 @@ export class AppController {
 
   @Get('health')
   @ApiOperation({ summary: 'Health check endpoint' })
-  async getHealth() {
+  async getHealth(@Res() res: Response) {
     const db = await this.appService.checkDbHealth();
-    return {
-      status: 'ok',
+    const healthy = db.db === 'ok';
+    return res.status(healthy ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).json({
+      status: healthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       version: '1.0.0',
       ...db,
-    };
+    });
   }
 
   @Get('debug')
