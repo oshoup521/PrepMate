@@ -1,5 +1,5 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -10,12 +10,16 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { User } from './users/entities/user.entity';
 import { InterviewSession } from './interview/entities/interview-session.entity';
+import { ErrorLog } from './error-log/entities/error-log.entity';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
 import { CustomLoggerService } from './common/services/logger.service';
 import { EmailService } from './common/services/email.service';
 import { CustomCacheModule } from './cache/cache.module';
 import { PaymentModule } from './payment/payment.module';
 import { SubscriptionCheckInterceptor } from './common/interceptors/subscription-check.interceptor';
+import { ErrorLogModule } from './error-log/error-log.module';
+import { AllExceptionsFilter } from './common/exceptions/http-exception.filter';
+import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 
 function parseDbUrl(rawUrl: string) {
   // Strip protocol
@@ -63,14 +67,14 @@ function parseDbUrl(rawUrl: string) {
         ? {
             type: 'postgres' as const,
             ...parseDbUrl(process.env.DATABASE_URL),
-            entities: [User, InterviewSession],
+            entities: [User, InterviewSession, ErrorLog],
             synchronize: true,
             ssl: { rejectUnauthorized: false },
           }
         : {
             type: 'sqlite' as const,
             database: 'prepmate.sqlite',
-            entities: [User, InterviewSession],
+            entities: [User, InterviewSession, ErrorLog],
             synchronize: true,
           },
     ),
@@ -79,6 +83,7 @@ function parseDbUrl(rawUrl: string) {
     UsersModule,
     AuthModule,
     PaymentModule,
+    ErrorLogModule,
   ],
   controllers: [AppController],
   providers: [
@@ -86,6 +91,8 @@ function parseDbUrl(rawUrl: string) {
     SecurityMiddleware,
     CustomLoggerService,
     EmailService,
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_FILTER, useClass: ValidationExceptionFilter },
     {
       provide: APP_INTERCEPTOR,
       useClass: SubscriptionCheckInterceptor,

@@ -1,7 +1,5 @@
 import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as fs from 'fs';
-import * as path from 'path';
 
 export interface LogContext {
   userId?: string;
@@ -14,78 +12,40 @@ export interface LogContext {
 
 @Injectable()
 export class CustomLoggerService implements LoggerService {
-  private logDir = path.join(process.cwd(), 'logs');
   private isDevelopment: boolean;
 
   constructor(private configService: ConfigService) {
     this.isDevelopment = this.configService.get('NODE_ENV') !== 'production';
-    this.ensureLogDirectory();
   }
 
-  private ensureLogDirectory() {
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
-    }
-  }
-
-  private formatMessage(level: LogLevel, message: any, context?: LogContext): string {
+  private formatMessage(level: string, message: any, context?: LogContext): string {
     const timestamp = new Date().toISOString();
-    const contextStr = context ? JSON.stringify(context) : '';
-    return `[${timestamp}] [${level.toUpperCase()}] ${message} ${contextStr}`;
-  }
-
-  private writeToFile(level: LogLevel, message: string) {
-    const fileName = `${level}-${new Date().toISOString().split('T')[0]}.log`;
-    const filePath = path.join(this.logDir, fileName);
-    
-    try {
-      fs.appendFileSync(filePath, message + '\n');
-    } catch (error) {
-      console.error('Failed to write to log file:', error);
-    }
+    const ctx = context ? ` ${JSON.stringify(context)}` : '';
+    return `[${timestamp}] [${level.toUpperCase()}] ${message}${ctx}`;
   }
 
   log(message: any, context?: LogContext) {
-    const formattedMessage = this.formatMessage('log', message, context);
-    
-    if (this.isDevelopment) {
-      console.log(formattedMessage);
-    }
-    
-    this.writeToFile('log', formattedMessage);
+    console.log(this.formatMessage('log', message, context));
   }
 
   error(message: any, trace?: string, context?: LogContext) {
-    const errorContext = { ...context, trace };
-    const formattedMessage = this.formatMessage('error', message, errorContext);
-    
-    console.error(formattedMessage);
-    this.writeToFile('error', formattedMessage);
+    const ctx = trace ? { ...context, stack: trace } : context;
+    console.error(this.formatMessage('error', message, ctx));
   }
 
   warn(message: any, context?: LogContext) {
-    const formattedMessage = this.formatMessage('warn', message, context);
-    
-    if (this.isDevelopment) {
-      console.warn(formattedMessage);
-    }
-    
-    this.writeToFile('warn', formattedMessage);
+    console.warn(this.formatMessage('warn', message, context));
   }
 
   debug(message: any, context?: LogContext) {
     if (this.isDevelopment) {
-      const formattedMessage = this.formatMessage('debug', message, context);
-      console.debug(formattedMessage);
-      this.writeToFile('debug', formattedMessage);
+      console.debug(this.formatMessage('debug', message, context));
     }
   }
 
   verbose(message: any, context?: LogContext) {
     if (this.isDevelopment) {
-      const formattedMessage = this.formatMessage('verbose', message, context);
-      console.log(formattedMessage);
-      this.writeToFile('verbose', formattedMessage);
+      console.log(this.formatMessage('verbose', message, context));
     }
   }
 

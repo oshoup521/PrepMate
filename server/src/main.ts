@@ -3,9 +3,6 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
-import { AllExceptionsFilter as HttpExceptionFilter } from './common/exceptions/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/services/logger.service';
 import helmet from 'helmet';
@@ -35,12 +32,6 @@ async function bootstrap() {
       },
     }),
   );
-  // Global exception filters (order matters - most specific first)
-  app.useGlobalFilters(
-    new ValidationExceptionFilter(),
-    new HttpExceptionFilter(),
-  );
-
   // Swagger API Documentation
   const config = new DocumentBuilder()
     .setTitle('PrepMate API')
