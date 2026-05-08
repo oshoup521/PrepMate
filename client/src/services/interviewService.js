@@ -200,7 +200,7 @@ export const interviewService = {
 
   endSession: async (sessionId) => {
     try {
-      const response = await apiClient.post(`/interview/sessions/${sessionId}/end`);
+      const response = await apiClient.post(`/interview/sessions/${sessionId}/end`, undefined, { timeout: 60000 });
       return response.data;
     } catch (error) {
       throw error;
