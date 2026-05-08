@@ -153,9 +153,12 @@ export class InterviewController {
     try {
       this.logger.debug(`Generating question for role: ${generateQuestionDto.jobRole}`);
       return await this.interviewService.generateQuestion(
-        generateQuestionDto.jobRole, 
+        generateQuestionDto.jobRole,
         generateQuestionDto.difficulty,
-        generateQuestionDto.context
+        generateQuestionDto.context,
+        generateQuestionDto.lastAnswer,
+        generateQuestionDto.lastScore,
+        generateQuestionDto.questionNumber,
       );
     } catch (error) {
       this.logger.error(`Error generating question: ${error.message}`);
@@ -234,6 +237,9 @@ export class InterviewController {
         generateQuestionDto.jobRole,
         generateQuestionDto.difficulty,
         generateQuestionDto.context,
+        generateQuestionDto.lastAnswer,
+        generateQuestionDto.lastScore,
+        generateQuestionDto.questionNumber,
       );
       for await (const event of stream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);

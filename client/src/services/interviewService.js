@@ -93,7 +93,7 @@ export const interviewService = {
     }
   },
 
-  generateQuestionStream: async (jobRole, difficulty = 'medium', context = null, onToken, onDone, onError) => {
+  generateQuestionStream: async (jobRole, difficulty = 'medium', context = null, lastAnswer = null, lastScore = null, questionNumber = null, onToken, onDone, onError) => {
     const token = localStorage.getItem('token');
     try {
       const response = await fetch(`${API_URL}/interview/generate-question/stream`, {
@@ -102,7 +102,7 @@ export const interviewService = {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ jobRole, difficulty, context }),
+        body: JSON.stringify({ jobRole, difficulty, context, lastAnswer, lastScore, questionNumber }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await interviewService._readSSEStream(response, onToken, onDone, onError);

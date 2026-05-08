@@ -5,6 +5,7 @@ import { InterviewService } from './interview.service';
 import { ConfigModule } from '@nestjs/config';
 import { InterviewSession } from './entities/interview-session.entity';
 import { UsersModule } from '../users/users.module';
+import { AIProviderService } from '../common/services/ai-provider.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [InterviewController],
-  providers: [InterviewService],
+  providers: [InterviewService, AIProviderService],
   exports: [InterviewService],
 })
 export class InterviewModule {}

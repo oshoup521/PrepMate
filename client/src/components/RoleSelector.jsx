@@ -61,6 +61,36 @@ const RoleSelector = ({ onRoleSelect, selectedRole, onDifficultySelect, selected
       bgColor: 'bg-pink-50 dark:bg-pink-900/10',
       textColor: 'text-pink-600 dark:text-pink-400',
       borderColor: 'border-pink-200 dark:border-pink-800'
+    },
+    {
+      id: 'full-stack-developer',
+      title: 'Full Stack Developer',
+      description: 'End-to-end development, frontend + backend + databases',
+      icon: '🔀',
+      color: 'from-teal-500 to-cyan-500',
+      bgColor: 'bg-teal-50 dark:bg-teal-900/10',
+      textColor: 'text-teal-600 dark:text-teal-400',
+      borderColor: 'border-teal-200 dark:border-teal-800'
+    },
+    {
+      id: 'ux-designer',
+      title: 'UX Designer',
+      description: 'User research, wireframing, Figma, design systems',
+      icon: '🎭',
+      color: 'from-violet-500 to-purple-500',
+      bgColor: 'bg-violet-50 dark:bg-violet-900/10',
+      textColor: 'text-violet-600 dark:text-violet-400',
+      borderColor: 'border-violet-200 dark:border-violet-800'
+    },
+    {
+      id: 'qa-engineer',
+      title: 'QA Engineer',
+      description: 'Testing strategies, automation, bug tracking, QA processes',
+      icon: '🔍',
+      color: 'from-amber-500 to-yellow-500',
+      bgColor: 'bg-amber-50 dark:bg-amber-900/10',
+      textColor: 'text-amber-600 dark:text-amber-400',
+      borderColor: 'border-amber-200 dark:border-amber-800'
     }
   ];
 

@@ -2,16 +2,14 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { InterviewSession } from './entities/interview-session.entity';
 import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
+import { AIProviderService } from '../common/services/ai-provider.service';
 
 @Injectable()
 export class InterviewService {
   private readonly logger = new Logger(InterviewService.name);
-  private genAI: GoogleGenerativeAI;
-  private model: any;
 
   constructor(
     private configService: ConfigService,
@@ -19,18 +17,8 @@ export class InterviewService {
     private interviewSessionRepository: Repository<InterviewSession>,
     private cacheService: CacheService,
     private usersService: UsersService,
-  ) {    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is required but not set in environment variables');
-    }
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    
-    const modelName = this.configService.get<string>('GEMINI_MODEL');
-    if (!modelName) {
-      throw new Error('GEMINI_MODEL is required but not set in environment variables');
-    }
-    this.model = this.genAI.getGenerativeModel({ model: modelName });
-  }
+    private aiProviderService: AIProviderService,
+  ) {}
 
   private readonly VALID_ROLES = [
     'Software Engineer',
@@ -309,45 +297,82 @@ export class InterviewService {
   }
 
   private async callAIWithTimeout<T>(
-    prompt: string,
-    timeoutMs: number = 30000,
-    maxRetries: number = 3
+    messages: Array<{ role: 'system' | 'user'; content: string }>,
+    options: { timeoutMs?: number; json?: boolean } = {},
   ): Promise<T> {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('AI call timeout')), timeoutMs);
-    });
+    return this.aiProviderService.complete(messages, options) as unknown as T;
+  }
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const aiPromise = this.model.generateContent(prompt);
-        const result = await Promise.race([aiPromise, timeoutPromise]);
-        const response = await result.response;
-        return response.text();
-      } catch (error) {
-        this.logger.error(`AI call attempt ${attempt} failed:`, error);
-        
-        // Check if it's a 503 Service Unavailable error (overloaded)
-        const is503Error = error.message && (
-          error.message.includes('503') || 
-          error.message.includes('Service Unavailable') ||
-          error.message.includes('overloaded')
-        );
-        
-        // If it's the last attempt or not a retryable error, throw
-        if (attempt === maxRetries || !is503Error) {
-          throw error;
-        }
-        
-        // Wait with exponential backoff before retrying
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
-        this.logger.warn(`Service overloaded, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+  private buildQuestionMessages(params: {
+    role: string;
+    difficulty: string;
+    context?: string;
+    lastAnswer?: string;
+    lastScore?: number;
+    questionNumber?: number;
+    streaming: boolean;
+  }): Array<{ role: 'system' | 'user'; content: string }> {
+    const { role, difficulty, context, lastAnswer, lastScore, questionNumber, streaming } = params;
+
+    const difficultyMap: Record<string, string> = {
+      easy: 'beginner-level',
+      medium: 'intermediate-level',
+      hard: 'advanced-level',
+    };
+    const actualDifficulty = difficultyMap[difficulty] ?? 'intermediate-level';
+    const isFirstQ = !context || !context.includes('Previous questions');
+
+    const systemMsg = `You are Alex, a warm and professional ${role} interviewer. You are encouraging, empathetic, and conversational — not robotic. You make candidates feel comfortable while still being thorough.`;
+
+    let userMsg: string;
+
+    if (isFirstQ) {
+      userMsg = `Start with a brief, friendly one-sentence greeting, then ask your first ${actualDifficulty}-level interview question. Keep the total under 4 sentences.`;
+    } else {
+      const parts: string[] = [];
+
+      if (context) {
+        parts.push(`Previously asked questions:\n${context}`);
       }
+
+      if (lastAnswer) {
+        parts.push(`Candidate's last answer: "${lastAnswer}"`);
+
+        if (lastScore !== undefined) {
+          if (lastScore >= 8) {
+            parts.push(`They answered very well (score ${lastScore}/10). Build on their strength — ask a more challenging follow-up or push into a harder aspect of the same topic.`);
+          } else if (lastScore <= 4) {
+            parts.push(`They struggled (score ${lastScore}/10). Probe the same area from a different angle, or ask a simpler related question to help them build confidence.`);
+          } else {
+            parts.push(`Reference or naturally build upon something specific they mentioned in their last answer.`);
+          }
+        } else {
+          parts.push(`Reference or naturally build upon something specific they mentioned in their last answer.`);
+        }
+      }
+
+      // Interview arc: inject a behavioral question around Q4-Q5
+      const qNum = questionNumber ?? 2;
+      if (qNum === 4 || qNum === 5) {
+        parts.push(`This is a good point to ask a behavioral or scenario-based question (e.g. "Tell me about a time when...") to balance the technical questions.`);
+      }
+
+      parts.push(`IMPORTANT: Avoid repeating similar questions.\nStart with a very brief natural transition phrase (2-5 words, e.g. "Good.", "Interesting.", "Let's shift gears."), then ask a new ${actualDifficulty}-level question. Total: 1-3 sentences.`);
+
+      userMsg = parts.join('\n\n');
     }
-    
-    // This should never be reached due to the throw in the loop, but TypeScript needs it
-    throw new Error('All retry attempts failed');
-  }async generateQuestion(role: string, difficulty: string = 'medium', context?: string): Promise<any> {
+
+    const formatInstruction = streaming
+      ? `\n\nWrite plain text only — no JSON, no markdown, no bullet points.\n\nAfter the question, on a new line write exactly "---" and then write the ideal answer key points (for internal scoring use only).`
+      : `\n\nRespond with valid JSON only: {"question": "...", "context": "..."}\nThe "context" field should contain ideal answer key points for internal scoring.`;
+
+    return [
+      { role: 'system', content: systemMsg },
+      { role: 'user', content: userMsg + formatInstruction },
+    ];
+  }
+
+  async generateQuestion(role: string, difficulty: string = 'medium', context?: string, lastAnswer?: string, lastScore?: number, questionNumber?: number): Promise<any> {
     try {
       // Normalize and validate inputs
       role = this.normalizeRole(role);
@@ -376,21 +401,9 @@ export class InterviewService {
 
       this.logger.debug(`Generating new question for role: ${role}, difficulty: ${difficulty}`);
 
-      const difficultyMap = {
-        easy: 'beginner-level',
-        medium: 'intermediate-level', 
-        hard: 'advanced-level'
-      };
-      
-      const actualDifficulty = difficultyMap[difficulty] || 'intermediate-level';
-      const contextPrompt = context ? `Context: ${context}\n` : '';
-      
-      const isFirstQ = !context || !context.includes('Previous questions');
-      const prompt = isFirstQ
-        ? `You are Alex, a warm and professional ${role} interviewer. Start with a brief friendly greeting, then ask a ${actualDifficulty}-level interview question. Keep it under 4 sentences, plain text only. Format the response as JSON with 'question' and 'context' fields. The 'context' should include the ideal answer points.`
-        : `You are Alex, a warm and professional ${role} interviewer. ${contextPrompt}IMPORTANT: Avoid asking similar or duplicate questions. Start with a brief natural transition phrase then ask a new ${actualDifficulty}-level question. Plain text only. Format the response as JSON with 'question' and 'context' fields. The 'context' should include the ideal answer points.`;
+      const messages = this.buildQuestionMessages({ role, difficulty, context, lastAnswer, lastScore, questionNumber, streaming: false });
 
-      const text = await this.callAIWithTimeout<string>(prompt);
+      const text = await this.callAIWithTimeout<string>(messages, { json: true });
 
       let questionData;
 
@@ -478,14 +491,13 @@ export class InterviewService {
 
       this.logger.debug(`Evaluating answer for role: ${role}`);
 
-      const prompt = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response.
-                     Question: "${question}"
-                     Candidate's answer: "${answer}"
+      const systemMsg = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response. You are encouraging and conversational — sound like a real person, not a report card.`;
+      const userMsg = `Question: "${question}"\nCandidate's answer: "${answer}"\n\nAcknowledge what they did well, gently note gaps, stay encouraging. Keep it to 2-4 sentences.\n\nRespond with valid JSON only: {"score": <integer 1-10>, "feedback": "...", "improvement_areas": "..."}`;
 
-                     Respond conversationally as Alex — acknowledge what they did well, gently note gaps, stay encouraging. Sound like a real person, not a report card.
-                     Format the response as JSON with 'score' (integer 1-10), 'feedback' (2-4 conversational sentences), and 'improvement_areas' (1-2 sentences of friendly advice) fields.`;
-
-      const text = await this.callAIWithTimeout<string>(prompt);
+      const text = await this.callAIWithTimeout<string>(
+        [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],
+        { json: true },
+      );
 
       let evaluationData;
 
@@ -540,44 +552,20 @@ export class InterviewService {
     role: string,
     difficulty: string = 'medium',
     context?: string,
+    lastAnswer?: string,
+    lastScore?: number,
+    questionNumber?: number,
   ): AsyncGenerator<{ type: string; content?: string; data?: any }> {
     role = this.normalizeRole(role);
     this.validateRole(role);
     this.validateDifficulty(difficulty);
 
-    const difficultyMap = {
-      easy: 'beginner-level',
-      medium: 'intermediate-level',
-      hard: 'advanced-level',
-    };
-    const actualDifficulty = difficultyMap[difficulty] || 'intermediate-level';
-    const contextPrompt = context ? `Context: ${context}\n` : '';
-    const uniquenessHint =
-      context && context.includes('Previous questions')
-        ? 'IMPORTANT: Avoid similar or duplicate questions. Create a unique question exploring different aspects of the role.\n'
-        : '';
-
-    const isFirstQuestion = !context || !context.includes('Previous questions');
-
-    const prompt = isFirstQuestion
-      ? `You are Alex, a warm and professional ${role} interviewer. You are encouraging, empathetic, and conversational — not robotic. You make candidates feel comfortable while still being thorough.
-
-Start with a brief, friendly one-sentence greeting, then naturally flow into your first ${actualDifficulty}-level interview question. Keep the total response under 4 sentences. Write plain text only — no JSON, no markdown, no bullet points.
-
-After the question, on a new line write exactly "---" and then write the ideal answer key points (for internal scoring use only).`
-      : `You are Alex, a warm and professional ${role} interviewer continuing a live interview session.
-
-${contextPrompt}${uniquenessHint}Ask a new ${actualDifficulty}-level question. Start with a very brief natural transition phrase (e.g. "Good.", "Interesting.", "Let's shift gears." — keep it to 2-5 words), then ask your question. Total response should be 1-3 sentences. Write plain text only — no JSON, no markdown, no bullet points.
-
-After the question, on a new line write exactly "---" and then write the ideal answer key points (for internal scoring use only).`;
+    const messages = this.buildQuestionMessages({ role, difficulty, context, lastAnswer, lastScore, questionNumber, streaming: true });
 
     try {
-      const result = await this.model.generateContentStream(prompt);
       let accumulated = '';
 
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (!text) continue;
+      for await (const text of this.aiProviderService.stream(messages)) {
         accumulated += text;
         yield { type: 'token', content: text };
       }
@@ -615,26 +603,16 @@ After the question, on a new line write exactly "---" and then write the ideal a
     if (!answer?.trim()) throw new Error('Answer is required');
     if (answer.length > 5000) throw new Error('Answer must be less than 5000 characters');
 
-    const prompt = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response in a live interview.
-
-Question asked: "${question}"
-Candidate's response: "${answer}"
-
-Respond as Alex would in a real human interview — naturally and conversationally. Acknowledge what they did well (even briefly), gently note what was missing if anything, and stay encouraging. Sound like a real person giving feedback, not a report card. Keep it to 2-4 sentences.
-
-Use this EXACT output format — do not deviate:
-Line 1: SCORE: [a single integer from 1 to 10]
-Lines 2 onwards: [2-4 sentences of warm, conversational feedback as Alex]
-Then a line with exactly "---"
-Then: [1-2 sentences of friendly advice on what to study or improve, phrased as genuine guidance]`;
+    const systemMsg = `You are Alex, a warm and empathetic ${role} interviewer giving live feedback. You sound like a real person — encouraging and conversational, not a report card.`;
+    const userMsg = `Question asked: "${question}"\nCandidate's response: "${answer}"\n\nAcknowledge what they did well (even briefly), gently note what was missing if anything, stay encouraging. Keep it to 2-4 sentences.\n\nUse this EXACT output format — do not deviate:\nLine 1: SCORE: [a single integer from 1 to 10]\nLines 2 onwards: [2-4 sentences of warm, conversational feedback as Alex]\nThen a line with exactly "---"\nThen: [1-2 sentences of friendly advice on what to study or improve, phrased as genuine guidance]`;
 
     try {
-      const result = await this.model.generateContentStream(prompt);
       let accumulated = '';
 
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (!text) continue;
+      for await (const text of this.aiProviderService.stream([
+        { role: 'system', content: systemMsg },
+        { role: 'user', content: userMsg },
+      ])) {
         accumulated += text;
         yield { type: 'token', content: text };
       }
@@ -917,35 +895,17 @@ Then: [1-2 sentences of friendly advice on what to study or improve, phrased as 
         evaluation: session.evaluations && session.evaluations[index] ? session.evaluations[index] : null
       }));
 
-      const prompt = `Analyze this ${session.role} interview session and provide a comprehensive summary.
-                     
-                     Interview Data:
-                     ${JSON.stringify(interviewData, null, 2)}
-                     
-                     Role: ${session.role}
-                     Difficulty: ${session.difficulty}
-                     
-                     Please provide:
-                     1. Overall performance score (1-10)
-                     2. Key strengths demonstrated (as array of strings)
-                     3. Areas for improvement (as array of strings)
-                     4. Specific recommendations for skill development (as detailed text)
-                     5. Technical competency assessment (as detailed text)
-                     
-                     IMPORTANT: Format all text content using proper markdown:
-                     - Use **bold** for important concepts, technologies, and key terms
-                     - Use *italic* for emphasis
-                     - Use \`code\` for technical terms, function names, and code snippets
-                     - Use ### for section headers within recommendations
-                     - Use - for bullet points in lists
-                     - Use > for important quotes or tips
-                     
-                     Format the response as JSON with fields: 'overallScore', 'strengths', 'improvements', 'recommendations', 'technicalAssessment'.
-                     
-                     Example format for recommendations:
-                     "### Next Steps - **Fundamentals of Data Preprocessing:** Focus on mastering the fundamentals of data preprocessing, including techniques for handling missing data (mean/median/mode imputation, KNN imputation, regression imputation, deletion), handling skewed data (log transformation, winsorization, Box-Cox transformation), and feature scaling/normalization. - **Practice Problem Solving:** Work through practice problems and case studies that involve data preprocessing. This will help to solidify understanding and develop the ability to apply these techniques in different contexts."`;
+      const interviewText = interviewData
+        .map((item, i) => `Q${i + 1}: ${item.question}\nA${i + 1}: ${item.answer}`)
+        .join('\n\n');
 
-      const text = await this.callAIWithTimeout<string>(prompt, 45000); // Longer timeout for summary generation
+      const systemMsg = `You are an expert interview coach providing detailed, constructive performance analysis. Use markdown formatting: **bold** for key concepts, \`code\` for technical terms, ### for section headers, - for bullet points.`;
+      const userMsg = `Analyze this ${session.role} interview (difficulty: ${session.difficulty}).\n\n${interviewText}\n\nProvide:\n1. Overall performance score (1-10)\n2. Key strengths demonstrated (array of strings)\n3. Areas for improvement (array of strings)\n4. Specific recommendations for skill development (markdown text)\n5. Technical competency assessment (markdown text)\n\nRespond with valid JSON only: {"overallScore": <number>, "strengths": [...], "improvements": [...], "recommendations": "...", "technicalAssessment": "..."}`;
+
+      const text = await this.callAIWithTimeout<string>(
+        [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],
+        { timeoutMs: 45000, json: true },
+      );
 
       let aiSummaryData;
 

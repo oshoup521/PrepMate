@@ -21,7 +21,13 @@
       "Bash(node -e ':*)",
       "Bash(xargs grep:*)",
       "Bash(find:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\oshoupadhyay\\\\PROJECTS\\\\MY-PROJECTs\\\\PrepMate\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30)",
+      "Bash(Format-Table FullName)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Select-Object FullName)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

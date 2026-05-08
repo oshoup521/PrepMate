@@ -64,8 +64,24 @@ export class GenerateQuestionDto {
 
   @IsOptional()
   @IsString({ message: 'Context must be a string' })
-  @Length(0, 1000, { message: 'Context must be less than 1000 characters' })
+  @Length(0, 2000, { message: 'Context must be less than 2000 characters' })
   context?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Last answer must be a string' })
+  @Length(0, 5000, { message: 'Last answer must be less than 5000 characters' })
+  lastAnswer?: string;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Last score must be a number' })
+  @Min(1, { message: 'Last score must be at least 1' })
+  @Max(10, { message: 'Last score must be at most 10' })
+  lastScore?: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Question number must be a number' })
+  @Min(1, { message: 'Question number must be at least 1' })
+  questionNumber?: number;
 }
 
 export class EvaluateAnswerDto {

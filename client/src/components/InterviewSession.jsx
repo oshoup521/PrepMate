@@ -36,9 +36,9 @@ function loadRazorpayScript() {
 
 const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-// Build a "don't repeat these questions" context that stays under the 1000-char server cap.
+// Build a "don't repeat these questions" context that stays under the 2000-char server cap.
 // Keeps the most recent questions, truncates each, and hard-caps the final string.
-const MAX_CONTEXT_CHARS = 900; // leave headroom below 1000
+const MAX_CONTEXT_CHARS = 1800; // leave headroom below 2000
 const MAX_QUESTION_SNIPPET = 90;
 const buildQuestionContext = (previousQuestions) => {
   if (!previousQuestions?.length) return undefined;
@@ -272,7 +272,7 @@ const InterviewSession = () => {
     }
   };
 
-  const generateQuestion = async () => {
+  const generateQuestion = async ({ lastAnswer = null, lastScore = null, questionNumber = null } = {}) => {
     if (!selectedRole) {
       console.error('No role selected for question generation');
       return;
@@ -290,11 +290,15 @@ const InterviewSession = () => {
 
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
       const context = buildQuestionContext(previousQuestions);
+      const qNum = questionNumber ?? (messages.filter(m => m.sender === 'ai').length + 1);
 
       await interviewService.generateQuestionStream(
         selectedRole,
         apiDifficulty,
         context,
+        lastAnswer,
+        lastScore,
+        qNum,
         (token) => {
           setMessages(prev => {
             const lastIdx = prev.length - 1;
@@ -365,11 +369,15 @@ const InterviewSession = () => {
 
       const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
       const context = buildQuestionContext(previousQuestions);
+      const qNum = messages.filter(m => m.sender === 'ai').length + 1;
 
       await interviewService.generateQuestionStream(
         role,
         apiDifficulty,
         context,
+        null,
+        null,
+        qNum,
         (token) => {
           setMessages(prev => {
             const lastIdx = prev.length - 1;
@@ -489,7 +497,11 @@ const InterviewSession = () => {
       savedSuccessfully = true;
 
       if (!isLastQuestion) {
-        await generateQuestion();
+        await generateQuestion({
+          lastAnswer: answer,
+          lastScore: evaluation?.score,
+          questionNumber: answeredCount + 1,
+        });
       }
     } catch (error) {
       console.error('Failed to process answer:', error);
