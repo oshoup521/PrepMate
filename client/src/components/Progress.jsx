@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import interviewService from '../services/interviewService';
-import { LoadingPage } from './LoadingSpinner';
+import { LoadingPage, Button } from './LoadingSpinner';
+
+const MOBILE_PER_PAGE = 5;
+const DESKTOP_PER_PAGE = 10;
 
 const Progress = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mobilePage, setMobilePage] = useState(1);
+  const [desktopPage, setDesktopPage] = useState(1);
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalSessions: 0,
     completedSessions: 0,
@@ -116,6 +123,60 @@ const Progress = () => {
       lastSessionDate: sessions.length > 0 ? sessions[0].createdAt : null
     });
   };
+
+  const handleViewSession = (sessionId) => navigate(`/session/${sessionId}`);
+  const handleContinueSession = (sessionId) => navigate(`/interview?sessionId=${sessionId}`);
+
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+  const getDifficultyColor = (difficulty) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+      case 'hard': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
+    }
+  };
+
+  const getStatusColor = (session) => {
+    if (session.completed && session.status === 'completed') return 'status-completed';
+    if (session.status === 'in_progress') return 'status-in-progress';
+    return 'status-active';
+  };
+
+  const getStatusText = (session) => {
+    if (session.completed && session.status === 'completed') return 'Completed';
+    if (session.status === 'in_progress') return 'In Progress';
+    return 'Active';
+  };
+
+  const getScoreDisplay = (session) => {
+    let score = session.summary?.overallScore ?? session.summary?.score ?? null;
+    if (score !== null) {
+      const n = parseFloat(score);
+      if (!isNaN(n)) return `${n}/10`;
+    }
+    if (session.completed && session.status === 'completed') return 'Completed';
+    return 'N/A';
+  };
+
+  const getScoreColor = (score) => {
+    const n = parseFloat(score);
+    if (isNaN(n)) return 'text-gray-600 dark:text-gray-400';
+    if (n >= 8) return 'text-green-600 dark:text-green-400';
+    if (n >= 6) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  // Pagination calculations
+  const mobileTotalPages = Math.ceil(sessions.length / MOBILE_PER_PAGE);
+  const desktopTotalPages = Math.ceil(sessions.length / DESKTOP_PER_PAGE);
+  const mobileSessions = sessions.slice((mobilePage - 1) * MOBILE_PER_PAGE, mobilePage * MOBILE_PER_PAGE);
+  const desktopSessions = sessions.slice((desktopPage - 1) * DESKTOP_PER_PAGE, desktopPage * DESKTOP_PER_PAGE);
 
   if (loading) {
     return <LoadingPage message="Loading your progress data..." />;
@@ -339,7 +400,7 @@ const Progress = () => {
 
       {/* Recent Activity Summary */}
       {stats.lastSessionDate && (
-        <div className="card card-elevated">
+        <div className="card card-elevated mb-8 sm:mb-12">
           <div className="p-4 sm:p-6">
             <h3 className="text-lg sm:text-xl font-semibold text-light-text dark:text-dark-text mb-4">
               Recent Activity
@@ -368,6 +429,194 @@ const Progress = () => {
           </div>
         </div>
       )}
+
+      {/* All Sessions */}
+      <div className="card card-elevated">
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-light-text dark:text-dark-text">
+              All Sessions
+            </h3>
+            {sessions.length > 0 && (
+              <span className="text-sm text-light-text/60 dark:text-dark-text/60">
+                {sessions.length} total
+              </span>
+            )}
+          </div>
+
+          {sessions.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-forest/10 dark:bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-forest dark:text-sage" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-light-text/60 dark:text-dark-text/60">
+                No sessions yet. Start your first interview!
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Cards */}
+              <div className="block sm:hidden space-y-4">
+                {mobileSessions.map((session) => (
+                  <div key={session.id} className="card p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-light-text dark:text-dark-text">{session.role}</h4>
+                        <p className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">{formatDate(session.createdAt)}</p>
+                      </div>
+                      <div className="flex flex-col items-end space-y-2">
+                        <span className={`status-badge ${getDifficultyColor(session.difficulty)}`}>{session.difficulty}</span>
+                        <span className={`status-badge ${getStatusColor(session)}`}>{getStatusText(session)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-light-text/60 dark:text-dark-text/60">
+                        Score: <span className={`font-semibold ${getScoreColor(session.summary?.overallScore || session.summary?.score || 0)}`}>
+                          {getScoreDisplay(session)}
+                        </span>
+                      </div>
+                      <div className="flex space-x-2">
+                        {session.status === 'in_progress' && !session.completed && (
+                          <Button variant="primary" size="sm" onClick={() => handleContinueSession(session.id)}>Continue</Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => handleViewSession(session.id)}>View</Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Mobile Pagination */}
+                {mobileTotalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-2 pt-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMobilePage(p => Math.max(1, p - 1))}
+                      disabled={mobilePage === 1}
+                    >
+                      Prev
+                    </Button>
+                    {Array.from({ length: mobileTotalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setMobilePage(page)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                          mobilePage === page
+                            ? 'bg-forest dark:bg-sage text-white dark:text-dark-bg'
+                            : 'text-light-text/60 dark:text-dark-text/60 hover:bg-forest/10 dark:hover:bg-sage/10'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMobilePage(p => Math.min(mobileTotalPages, p + 1))}
+                      disabled={mobilePage === mobileTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden sm:block overflow-hidden rounded-xl border border-light-border dark:border-dark-border">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-light-border dark:divide-dark-border">
+                    <thead className="bg-light-bg/50 dark:bg-dark-bg/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Role & Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Difficulty</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Score</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Questions</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-light-text/60 dark:text-dark-text/60 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-dark-muted divide-y divide-light-border dark:divide-dark-border">
+                      {desktopSessions.map((session) => (
+                        <tr key={session.id} className="hover:bg-forest/5 dark:hover:bg-sage/5 transition-colors duration-200">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-light-text dark:text-dark-text">{session.role}</div>
+                            {session.description && (
+                              <div className="text-xs text-light-text/60 dark:text-dark-text/60 mt-1">{session.description}</div>
+                            )}
+                            <div className="text-xs text-light-text/50 dark:text-dark-text/50 mt-1">{formatDate(session.createdAt)}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`status-badge ${getDifficultyColor(session.difficulty)}`}>{session.difficulty}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`status-badge ${getStatusColor(session)}`}>{getStatusText(session)}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-sm font-semibold ${getScoreColor(session.summary?.overallScore || session.summary?.score || 0)}`}>
+                              {getScoreDisplay(session)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-light-text/60 dark:text-dark-text/60">
+                            {session.questions?.length || 0}
+                          </td>
+                          <td className="px-6 py-4 text-right text-sm font-medium space-x-2">
+                            {session.status === 'in_progress' && !session.completed && (
+                              <Button variant="primary" size="sm" onClick={() => handleContinueSession(session.id)}>Continue</Button>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={() => handleViewSession(session.id)}>View Details</Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Desktop Pagination */}
+                {desktopTotalPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-light-border dark:border-dark-border bg-light-bg/30 dark:bg-dark-bg/30">
+                    <p className="text-sm text-light-text/60 dark:text-dark-text/60">
+                      Showing {(desktopPage - 1) * DESKTOP_PER_PAGE + 1}–{Math.min(desktopPage * DESKTOP_PER_PAGE, sessions.length)} of {sessions.length}
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDesktopPage(p => Math.max(1, p - 1))}
+                        disabled={desktopPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      {Array.from({ length: desktopTotalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setDesktopPage(page)}
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                            desktopPage === page
+                              ? 'bg-forest dark:bg-sage text-white dark:text-dark-bg'
+                              : 'text-light-text/60 dark:text-dark-text/60 hover:bg-forest/10 dark:hover:bg-sage/10'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDesktopPage(p => Math.min(desktopTotalPages, p + 1))}
+                        disabled={desktopPage === desktopTotalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
