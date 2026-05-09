@@ -99,6 +99,10 @@ export class EvaluateAnswerDto {
   @IsString({ message: 'Job role must be a string' })
   @Length(2, 100, { message: 'Job role must be between 2 and 100 characters' })
   jobRole: string;
+
+  @IsOptional()
+  @IsEnum(['easy', 'medium', 'hard'], { message: 'Difficulty must be easy, medium, or hard' })
+  difficulty?: string;
 }
 
 export class SessionParamsDto {

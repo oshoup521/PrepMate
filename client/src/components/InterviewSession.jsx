@@ -181,6 +181,12 @@ const InterviewSession = () => {
       
       // Rebuild messages from session data
       const sessionMessages = [];
+      // Always show greeting as the first message
+      sessionMessages.push({
+        sender: 'ai',
+        text: `Hello! Welcome to your ${session.role} interview. Take a deep breath and be yourself — I'm here to have a great conversation with you. All the best!`,
+        isGreeting: true,
+      });
       if (session.questions && session.answers) {
         for (let i = 0; i < session.questions.length; i++) {
           sessionMessages.push({ sender: 'ai', text: session.questions[i] });
@@ -227,6 +233,12 @@ const InterviewSession = () => {
       const session = await interviewService.createSession(role, apiDifficulty);
       setCurrentSession(session);
       setPhase('interview');
+      // Show greeting before generating the first question — greeting is not scored
+      setMessages([{
+        sender: 'ai',
+        text: `Hello! Welcome to your ${role} interview. Take a deep breath and be yourself — I'm here to have a great conversation with you. All the best!`,
+        isGreeting: true,
+      }]);
       if (fromCoach) {
         await generateQuestionForSession(role, apiDifficulty);
       } else {
@@ -288,9 +300,9 @@ const InterviewSession = () => {
       const apiDifficulty = difficulty === 'beginner' ? 'easy' :
                            difficulty === 'advanced' ? 'hard' : 'medium';
 
-      const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
+      const previousQuestions = messages.filter(m => m.sender === 'ai' && !m.isGreeting).map(m => m.text);
       const context = buildQuestionContext(previousQuestions);
-      const qNum = questionNumber ?? (messages.filter(m => m.sender === 'ai').length + 1);
+      const qNum = questionNumber ?? (messages.filter(m => m.sender === 'ai' && !m.isGreeting).length + 1);
 
       await interviewService.generateQuestionStream(
         selectedRole,
@@ -367,9 +379,9 @@ const InterviewSession = () => {
     try {
       const apiDifficulty = sessionDifficulty || 'medium';
 
-      const previousQuestions = messages.filter(m => m.sender === 'ai').map(m => m.text);
+      const previousQuestions = messages.filter(m => m.sender === 'ai' && !m.isGreeting).map(m => m.text);
       const context = buildQuestionContext(previousQuestions);
-      const qNum = messages.filter(m => m.sender === 'ai').length + 1;
+      const qNum = messages.filter(m => m.sender === 'ai' && !m.isGreeting).length + 1;
 
       await interviewService.generateQuestionStream(
         role,
@@ -457,6 +469,7 @@ const InterviewSession = () => {
             currentQuestion,
             answer,
             selectedRole,
+            difficulty === 'beginner' ? 'easy' : difficulty === 'advanced' ? 'hard' : 'medium',
             (token) => {
               setMessages(prev => prev.map((msg, index) => {
                 if (index !== newMsgIndex) return msg;
@@ -937,6 +950,7 @@ const InterviewSession = () => {
                     !message.isStreaming &&
                     !!message.text &&
                     !isAnswered &&
+                    !message.isGreeting &&
                     index === messages.length - 1;
                   const answeredTime = isAnswered ? nextMsg.timeTaken : undefined;
                   return (

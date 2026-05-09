@@ -272,6 +272,7 @@ export class InterviewController {
         evaluateAnswerDto.question,
         evaluateAnswerDto.answer,
         evaluateAnswerDto.jobRole,
+        evaluateAnswerDto.difficulty,
       );
       for await (const event of stream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);

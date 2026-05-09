@@ -6,6 +6,7 @@ import { InterviewSession } from './entities/interview-session.entity';
 import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
 import { AIProviderService } from '../common/services/ai-provider.service';
+import { getPromptConfig } from './prompts';
 
 @Injectable()
 export class InterviewService {
@@ -314,20 +315,16 @@ export class InterviewService {
   }): Array<{ role: 'system' | 'user'; content: string }> {
     const { role, difficulty, context, lastAnswer, lastScore, questionNumber, streaming } = params;
 
-    const difficultyMap: Record<string, string> = {
-      easy: 'beginner-level',
-      medium: 'intermediate-level',
-      hard: 'advanced-level',
-    };
-    const actualDifficulty = difficultyMap[difficulty] ?? 'intermediate-level';
     const isFirstQ = !context || !context.includes('Previous questions');
+    const promptConfig = getPromptConfig(role, difficulty);
+    const { interviewer } = promptConfig;
 
-    const systemMsg = `You are Alex, a warm and professional ${role} interviewer. You are encouraging, empathetic, and conversational — not robotic. You make candidates feel comfortable while still being thorough.`;
+    const systemMsg = interviewer.persona;
 
     let userMsg: string;
 
     if (isFirstQ) {
-      userMsg = `Start with a brief, friendly one-sentence greeting, then ask your first ${actualDifficulty}-level interview question. Keep the total under 4 sentences.`;
+      userMsg = interviewer.firstQuestion;
     } else {
       const parts: string[] = [];
 
@@ -351,13 +348,13 @@ export class InterviewService {
         }
       }
 
-      // Interview arc: inject a behavioral question around Q4-Q5
+      // Interview arc: inject a role-specific behavioral question around Q4-Q5
       const qNum = questionNumber ?? 2;
       if (qNum === 4 || qNum === 5) {
-        parts.push(`This is a good point to ask a behavioral or scenario-based question (e.g. "Tell me about a time when...") to balance the technical questions.`);
+        parts.push(interviewer.behavioralHint);
       }
 
-      parts.push(`IMPORTANT: Avoid repeating similar questions.\nStart with a very brief natural transition phrase (2-5 words, e.g. "Good.", "Interesting.", "Let's shift gears."), then ask a new ${actualDifficulty}-level question. Total: 1-3 sentences.`);
+      parts.push(interviewer.followUpSuffix);
 
       userMsg = parts.join('\n\n');
     }
@@ -491,8 +488,9 @@ export class InterviewService {
 
       this.logger.debug(`Evaluating answer for role: ${role}`);
 
-      const systemMsg = `You are Alex, a warm and empathetic ${role} interviewer evaluating a candidate's response. You are encouraging and conversational — sound like a real person, not a report card.`;
-      const userMsg = `Question: "${question}"\nCandidate's answer: "${answer}"\n\nAcknowledge what they did well, gently note gaps, stay encouraging. Keep it to 2-4 sentences.\n\nRespond with valid JSON only: {"score": <integer 1-10>, "feedback": "...", "improvement_areas": "..."}`;
+      const evalPromptConfig = getPromptConfig(role, 'medium');
+      const systemMsg = evalPromptConfig.evaluator.persona;
+      const userMsg = `Question: "${question}"\nCandidate's answer: "${answer}"\n\n${evalPromptConfig.evaluator.scoringNote}\n\nAcknowledge what they did well, gently note gaps, stay encouraging. Keep it to 2-4 sentences.\n\nRespond with valid JSON only: {"score": <integer 1-10>, "feedback": "...", "improvement_areas": "..."}`;
 
       const text = await this.callAIWithTimeout<string>(
         [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],
@@ -596,6 +594,7 @@ export class InterviewService {
     question: string,
     answer: string,
     role: string,
+    difficulty: string = 'medium',
   ): AsyncGenerator<{ type: string; content?: string; data?: any }> {
     role = this.normalizeRole(role);
     this.validateRole(role);
@@ -603,8 +602,9 @@ export class InterviewService {
     if (!answer?.trim()) throw new Error('Answer is required');
     if (answer.length > 5000) throw new Error('Answer must be less than 5000 characters');
 
-    const systemMsg = `You are Alex, a warm and empathetic ${role} interviewer giving live feedback. You sound like a real person — encouraging and conversational, not a report card.`;
-    const userMsg = `Question asked: "${question}"\nCandidate's response: "${answer}"\n\nAcknowledge what they did well (even briefly), gently note what was missing if anything, stay encouraging. Keep it to 2-4 sentences.\n\nUse this EXACT output format — do not deviate:\nLine 1: SCORE: [a single integer from 1 to 10]\nLines 2 onwards: [2-4 sentences of warm, conversational feedback as Alex]\nThen a line with exactly "---"\nThen: [1-2 sentences of friendly advice on what to study or improve, phrased as genuine guidance]`;
+    const evalPromptConfig = getPromptConfig(role, difficulty);
+    const systemMsg = evalPromptConfig.evaluator.persona;
+    const userMsg = `Question asked: "${question}"\nCandidate's response: "${answer}"\n\n${evalPromptConfig.evaluator.scoringNote}\n\nAcknowledge what they did well (even briefly), gently note what was missing if anything, stay encouraging. Keep it to 2-4 sentences.\n\nUse this EXACT output format — do not deviate:\nLine 1: SCORE: [a single integer from 1 to 10]\nLines 2 onwards: [2-4 sentences of warm, conversational feedback as Alex]\nThen a line with exactly "---"\nThen: [1-2 sentences of friendly advice on what to study or improve, phrased as genuine guidance]`;
 
     try {
       let accumulated = '';
@@ -899,8 +899,9 @@ export class InterviewService {
         .map((item, i) => `Q${i + 1}: ${item.question}\nA${i + 1}: ${item.answer}`)
         .join('\n\n');
 
-      const systemMsg = `You are an expert interview coach providing detailed, constructive performance analysis. Use markdown formatting: **bold** for key concepts, \`code\` for technical terms, ### for section headers, - for bullet points.`;
-      const userMsg = `Analyze this ${session.role} interview (difficulty: ${session.difficulty}).\n\n${interviewText}\n\nProvide:\n1. Overall performance score (1-10)\n2. Key strengths demonstrated (array of strings)\n3. Areas for improvement (array of strings)\n4. Specific recommendations for skill development (markdown text)\n5. Technical competency assessment (markdown text)\n\nRespond with valid JSON only: {"overallScore": <number>, "strengths": [...], "improvements": [...], "recommendations": "...", "technicalAssessment": "..."}`;
+      const summaryPromptConfig = getPromptConfig(session.role, session.difficulty);
+      const systemMsg = summaryPromptConfig.summary.persona;
+      const userMsg = `Analyze this ${session.role} interview (difficulty: ${session.difficulty}).\n\n${interviewText}\n\n${summaryPromptConfig.summary.assessmentFocus}\n\nProvide:\n1. Overall performance score (1-10)\n2. Key strengths demonstrated (array of strings)\n3. Areas for improvement (array of strings)\n4. Specific recommendations for skill development (markdown text)\n5. Technical competency assessment (markdown text)\n\nRespond with valid JSON only: {"overallScore": <number>, "strengths": [...], "improvements": [...], "recommendations": "...", "technicalAssessment": "..."}`;
 
       const text = await this.callAIWithTimeout<string>(
         [{ role: 'system', content: systemMsg }, { role: 'user', content: userMsg }],

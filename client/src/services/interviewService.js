@@ -112,7 +112,7 @@ export const interviewService = {
     }
   },
 
-  evaluateAnswerStream: async (question, answer, jobRole, onToken, onDone, onError) => {
+  evaluateAnswerStream: async (question, answer, jobRole, difficulty, onToken, onDone, onError) => {
     const token = localStorage.getItem('token');
     try {
       const response = await fetch(`${API_URL}/interview/evaluate-answer/stream`, {
@@ -121,7 +121,7 @@ export const interviewService = {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ question, answer, jobRole }),
+        body: JSON.stringify({ question, answer, jobRole, difficulty }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await interviewService._readSSEStream(response, onToken, onDone, onError);
